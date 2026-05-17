@@ -6209,7 +6209,9 @@ header {
     flex-wrap: wrap;
 }
 
-.btn-small {
+/* btn-sm 与 btn-small 等价（C2 / WebShell 等模块使用 btn-sm 别名） */
+.btn-small,
+.btn-sm {
     padding: 6px 14px;
     font-size: 0.8125rem;
     border-radius: 6px;
@@ -6222,7 +6224,23 @@ header {
     white-space: nowrap;
 }
 
-.btn-small:hover {
+/* 小号按钮统一尺寸，避免 .btn-danger 默认大 padding 导致同行按钮高低不齐 */
+.btn-primary.btn-small,
+.btn-primary.btn-sm,
+.btn-secondary.btn-small,
+.btn-secondary.btn-sm,
+.btn-danger.btn-small,
+.btn-danger.btn-sm,
+.btn-ghost.btn-small,
+.btn-ghost.btn-sm {
+    padding: 6px 14px;
+    font-size: 0.8125rem;
+    border-radius: 6px;
+    line-height: 1.25;
+}
+
+.btn-small:hover,
+.btn-sm:hover {
     background: var(--bg-tertiary);
     border-color: var(--accent-color);
     color: var(--accent-color);
@@ -6230,13 +6248,19 @@ header {
     box-shadow: var(--shadow-sm);
 }
 
-.btn-small.btn-danger {
+.btn-small.btn-danger,
+.btn-sm.btn-danger,
+.btn-danger.btn-small,
+.btn-danger.btn-sm {
     background: rgba(220, 53, 69, 0.08);
     border-color: rgba(220, 53, 69, 0.3);
     color: var(--error-color);
 }
 
-.btn-small.btn-danger:hover {
+.btn-small.btn-danger:hover,
+.btn-sm.btn-danger:hover,
+.btn-danger.btn-small:hover,
+.btn-danger.btn-sm:hover {
     background: rgba(220, 53, 69, 0.15);
     border-color: var(--error-color);
     color: #c82333;
