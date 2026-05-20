@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"cyberstrike-ai/internal/audit"
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/security"
 
@@ -18,6 +19,12 @@ type AuthHandler struct {
 	config     *config.Config
 	configPath string
 	logger     *zap.Logger
+	audit      *audit.Service
+}
+
+// SetAudit wires platform audit logging.
+func (h *AuthHandler) SetAudit(s *audit.Service) {
+	h.audit = s
 }
 
 // NewAuthHandler creates a new AuthHandler.
@@ -49,8 +56,30 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, expiresAt, err := h.manager.Authenticate(req.Password)
 	if err != nil {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{
+				Level:    "warn",
+				Category: "auth",
+				Action:   "login",
+				Result:   "failure",
+				Message:  "登录失败：密码错误",
+			})
+		}
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
 		return
+	}
+
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category:    "auth",
+			Action:      "login",
+			Result:      "success",
+			SessionHint: audit.HintFromToken(token),
+			Message:     "登录成功",
+			Detail: map[string]interface{}{
+				"expires_at": expiresAt.UTC().Format(time.RFC3339),
+			},
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -73,6 +102,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 
 	h.manager.RevokeToken(token)
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category: "auth",
+			Action:   "logout",
+			Result:   "success",
+			Message:  "退出登录",
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "已退出登录"})
 }
 
@@ -103,6 +140,15 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 
 	if !h.manager.CheckPassword(oldPassword) {
+		if h.audit != nil {
+			h.audit.Record(c, audit.Entry{
+				Level:    "warn",
+				Category: "auth",
+				Action:   "change_password",
+				Result:   "failure",
+				Message:  "修改密码失败：当前密码不正确",
+			})
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "当前密码不正确"})
 		return
 	}
@@ -130,6 +176,15 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 	if h.logger != nil {
 		h.logger.Info("登录密码已更新，所有会话已失效")
+	}
+
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category: "auth",
+			Action:   "change_password",
+			Result:   "success",
+			Message:  "登录密码已修改",
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "密码已更新，请使用新密码重新登录"})

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cyberstrike-ai/internal/agent"
+	"cyberstrike-ai/internal/audit"
 	"cyberstrike-ai/internal/c2"
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/database"
@@ -61,6 +62,7 @@ type App struct {
 	c2Watchdog         *c2.SessionWatchdog       // C2 会话看门狗
 	c2WatchdogCancel   context.CancelFunc        // 看门狗取消函数
 	c2Handler          *handler.C2Handler        // C2 REST（与 Manager 生命周期同步）
+	auditSvc           *audit.Service
 }
 
 // New 创建新应用
@@ -92,6 +94,10 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	if err != nil {
 		return nil, fmt.Errorf("初始化数据库失败: %w", err)
 	}
+
+	auditSvc := audit.NewService(db, cfg, log.Logger)
+	auditSvc.PurgeExpired()
+	audit.StartRetentionLoop(auditSvc, log.Logger)
 
 	// 创建MCP服务器（带数据库持久化）
 	mcpServer := mcp.NewServerWithStorage(log.Logger, db)
@@ -222,6 +228,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 
 		// 创建知识库API处理器
 		knowledgeHandler = handler.NewKnowledgeHandler(knowledgeManager, knowledgeRetriever, knowledgeIndexer, db, log.Logger)
+		knowledgeHandler.SetAudit(auditSvc)
 		log.Logger.Info("知识库模块初始化完成", zap.Bool("handler_created", knowledgeHandler != nil))
 
 		// 扫描知识库并建立索引（异步）
@@ -318,31 +325,42 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		log.Logger.Warn("创建 agents 目录失败", zap.String("path", agentsDir), zap.Error(err))
 	}
 	markdownAgentsHandler := handler.NewMarkdownAgentsHandler(agentsDir)
+	markdownAgentsHandler.SetAudit(auditSvc)
 	log.Logger.Info("多代理 Markdown 子 Agent 目录", zap.String("agentsDir", agentsDir))
 
 	// 创建处理器
 	agentHandler := handler.NewAgentHandler(agent, db, cfg, log.Logger)
+	agentHandler.SetAudit(auditSvc)
 	agentHandler.SetAgentsMarkdownDir(agentsDir)
 	// 如果知识库已启用，设置知识库管理器到AgentHandler以便记录检索日志
 	if knowledgeManager != nil {
 		agentHandler.SetKnowledgeManager(knowledgeManager)
 	}
 	monitorHandler := handler.NewMonitorHandler(mcpServer, executor, db, log.Logger)
+	monitorHandler.SetAudit(auditSvc)
 	monitorHandler.SetExternalMCPManager(externalMCPMgr) // 设置外部MCP管理器，以便获取外部MCP执行记录
 	notificationHandler := handler.NewNotificationHandler(db, agentHandler, log.Logger)
 	groupHandler := handler.NewGroupHandler(db, log.Logger)
 	authHandler := handler.NewAuthHandler(authManager, cfg, configPath, log.Logger)
+	authHandler.SetAudit(auditSvc)
 	attackChainHandler := handler.NewAttackChainHandler(db, &cfg.OpenAI, log.Logger)
 	vulnerabilityHandler := handler.NewVulnerabilityHandler(db, log.Logger)
+	vulnerabilityHandler.SetAudit(auditSvc)
 	webshellHandler := handler.NewWebShellHandler(log.Logger, db)
+	webshellHandler.SetAudit(auditSvc)
 	chatUploadsHandler := handler.NewChatUploadsHandler(log.Logger)
+	chatUploadsHandler.SetAudit(auditSvc)
 	registerWebshellTools(mcpServer, db, webshellHandler, log.Logger)
 	registerWebshellManagementTools(mcpServer, db, webshellHandler, log.Logger)
 	configHandler := handler.NewConfigHandler(configPath, cfg, mcpServer, executor, agent, attackChainHandler, externalMCPMgr, log.Logger)
+	configHandler.SetAudit(auditSvc)
 	agentHandler.SetHitlToolWhitelistSaver(configHandler)
 	externalMCPHandler := handler.NewExternalMCPHandler(externalMCPMgr, cfg, configPath, log.Logger)
+	externalMCPHandler.SetAudit(auditSvc)
 	roleHandler := handler.NewRoleHandler(cfg, configPath, log.Logger)
+	roleHandler.SetAudit(auditSvc)
 	skillsHandler := handler.NewSkillsHandler(cfg, configPath, log.Logger)
+	skillsHandler.SetAudit(auditSvc)
 	fofaHandler := handler.NewFofaHandler(cfg, log.Logger)
 	terminalHandler := handler.NewTerminalHandler(log.Logger)
 	if db != nil {
@@ -357,9 +375,12 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		registerC2Tools(mcpServer, c2Manager, log.Logger, cfg.Server.Port)
 	}
 	c2Handler := handler.NewC2Handler(c2Manager, log.Logger)
+	c2Handler.SetAudit(auditSvc)
 
 	// 创建OpenAPI处理器
 	conversationHandler := handler.NewConversationHandler(db, log.Logger)
+	conversationHandler.SetAudit(auditSvc)
+	auditHandler := handler.NewAuditHandler(db, auditSvc, log.Logger)
 	robotHandler := handler.NewRobotHandler(cfg, db, agentHandler, log.Logger)
 	openAPIHandler := handler.NewOpenAPIHandler(db, log.Logger, resultStorage, conversationHandler, agentHandler)
 
@@ -385,6 +406,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		c2Watchdog:         c2Watchdog,
 		c2WatchdogCancel:   watchdogCancel,
 		c2Handler:          c2Handler,
+		auditSvc:           auditSvc,
 	}
 	// 飞书/钉钉长连接（无需公网），启用时在后台启动；后续前端应用配置时会通过 RestartRobotConnections 重启
 	app.startRobotConnections()
@@ -487,6 +509,7 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 		fofaHandler,
 		terminalHandler,
 		app.c2Handler,
+		auditHandler,
 		mcpServer,
 		authManager,
 		openAPIHandler,
@@ -731,6 +754,7 @@ func setupRoutes(
 	fofaHandler *handler.FofaHandler,
 	terminalHandler *handler.TerminalHandler,
 	c2Handler *handler.C2Handler,
+	auditHandler *handler.AuditHandler,
 	mcpServer *mcp.Server,
 	authManager *security.AuthManager,
 	openAPIHandler *handler.OpenAPIHandler,
@@ -866,6 +890,13 @@ func setupRoutes(
 		protected.POST("/terminal/run", terminalHandler.RunCommand)
 		protected.POST("/terminal/run/stream", terminalHandler.RunCommandStream)
 		protected.GET("/terminal/ws", terminalHandler.RunCommandWS)
+
+		// 平台审计日志
+		protected.GET("/audit/meta", auditHandler.Meta)
+		protected.GET("/audit/summary", auditHandler.Summary)
+		protected.GET("/audit/logs", auditHandler.ListLogs)
+		protected.GET("/audit/logs/export", auditHandler.ExportLogs)
+		protected.GET("/audit/logs/:id", auditHandler.GetLog)
 
 		// 外部MCP管理
 		protected.GET("/external-mcp", externalMCPHandler.GetExternalMCPs)
@@ -1928,6 +1959,9 @@ func initializeKnowledge(
 
 	// 创建知识库API处理器
 	knowledgeHandler := handler.NewKnowledgeHandler(knowledgeManager, knowledgeRetriever, knowledgeIndexer, db, logger)
+	if app != nil && app.auditSvc != nil {
+		knowledgeHandler.SetAudit(app.auditSvc)
+	}
 	logger.Info("知识库模块初始化完成", zap.Bool("handler_created", knowledgeHandler != nil))
 
 	// 设置知识库管理器到AgentHandler以便记录检索日志

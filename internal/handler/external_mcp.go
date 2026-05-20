@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"cyberstrike-ai/internal/audit"
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/mcp"
 
@@ -20,7 +21,13 @@ type ExternalMCPHandler struct {
 	config     *config.Config
 	configPath string
 	logger     *zap.Logger
+	audit      *audit.Service
 	mu         sync.RWMutex
+}
+
+// SetAudit wires platform audit logging.
+func (h *ExternalMCPHandler) SetAudit(s *audit.Service) {
+	h.audit = s
 }
 
 // NewExternalMCPHandler 创建外部MCP处理器
@@ -180,6 +187,16 @@ func (h *ExternalMCPHandler) AddOrUpdateExternalMCP(c *gin.Context) {
 	}
 
 	h.logger.Info("外部MCP配置已更新", zap.String("name", name))
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category:     "external_mcp",
+			Action:       "upsert",
+			Result:       "success",
+			ResourceType: "external_mcp",
+			ResourceID:   name,
+			Message:      "更新外部 MCP 配置",
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "配置已更新"})
 }
 
@@ -209,6 +226,16 @@ func (h *ExternalMCPHandler) DeleteExternalMCP(c *gin.Context) {
 	}
 
 	h.logger.Info("外部MCP配置已删除", zap.String("name", name))
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category:     "external_mcp",
+			Action:       "delete",
+			Result:       "success",
+			ResourceType: "external_mcp",
+			ResourceID:   name,
+			Message:      "删除外部 MCP 配置",
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "配置已删除"})
 }
 

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"cyberstrike-ai/internal/agents"
+	"cyberstrike-ai/internal/audit"
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/knowledge"
 	"cyberstrike-ai/internal/mcp"
@@ -87,6 +88,7 @@ type ConfigHandler struct {
 	knowledgeInitializer       KnowledgeInitializer       // 知识库初始化器（可选）
 	appUpdater                 AppUpdater                 // App更新器（可选）
 	robotRestarter             RobotRestarter             // 机器人连接重启器（可选），ApplyConfig 时重启钉钉/飞书
+	audit                      *audit.Service
 	logger                     *zap.Logger
 	mu                         sync.RWMutex
 	lastEmbeddingConfig        *config.EmbeddingConfig // 上一次的嵌入模型配置（用于检测变更）
@@ -204,6 +206,13 @@ func (h *ConfigHandler) SetRobotRestarter(restarter RobotRestarter) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.robotRestarter = restarter
+}
+
+// SetAudit wires platform audit logging.
+func (h *ConfigHandler) SetAudit(s *audit.Service) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.audit = s
 }
 
 // ApplyWechatRobotBinding 微信 iLink 扫码绑定成功后写入配置并重启机器人连接
@@ -903,6 +912,9 @@ func (h *ConfigHandler) UpdateConfig(c *gin.Context) {
 		return
 	}
 
+	if h.audit != nil {
+		h.audit.RecordOK(c, "config", "update", "更新内存配置", "config", "", nil)
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "配置已更新"})
 }
 
@@ -1033,6 +1045,9 @@ func (h *ConfigHandler) ApplyConfig(c *gin.Context) {
 		h.logger.Info("检测到知识库从禁用变为启用，开始动态初始化知识库组件")
 		if _, err := knowledgeInitializer(); err != nil {
 			h.logger.Error("动态初始化知识库失败", zap.Error(err))
+			if h.audit != nil {
+				h.audit.RecordFail(c, "config", "apply", "应用配置失败：初始化知识库", map[string]interface{}{"error": err.Error()})
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "初始化知识库失败: " + err.Error()})
 			return
 		}
@@ -1067,6 +1082,9 @@ func (h *ConfigHandler) ApplyConfig(c *gin.Context) {
 		h.logger.Info("开始重新初始化知识库组件（嵌入模型配置已变更）")
 		if _, err := reinitKnowledgeInitializer(); err != nil {
 			h.logger.Error("重新初始化知识库失败", zap.Error(err))
+			if h.audit != nil {
+				h.audit.RecordFail(c, "config", "apply", "应用配置失败：重新初始化知识库", map[string]interface{}{"error": err.Error()})
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "重新初始化知识库失败: " + err.Error()})
 			return
 		}
@@ -1080,6 +1098,9 @@ func (h *ConfigHandler) ApplyConfig(c *gin.Context) {
 	if c2Rt != nil {
 		if err := c2Rt.ReconcileC2AfterConfigApply(); err != nil {
 			h.logger.Error("C2 配置应用失败", zap.Error(err))
+			if h.audit != nil {
+				h.audit.RecordFail(c, "config", "apply", "应用配置失败：C2", map[string]interface{}{"error": err.Error()})
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "C2 启动失败: " + err.Error()})
 			return
 		}
@@ -1220,6 +1241,20 @@ func (h *ConfigHandler) ApplyConfig(c *gin.Context) {
 	h.logger.Info("配置已应用",
 		zap.Int("tools_count", len(h.config.Security.Tools)),
 	)
+
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category: "config",
+			Action:   "apply",
+			Result:   "success",
+			Message:  "配置已应用",
+			Detail: map[string]interface{}{
+				"tools_count":      len(h.config.Security.Tools),
+				"knowledge_enabled": h.config.Knowledge.Enabled,
+				"c2_enabled":        h.config.C2.EnabledEffective(),
+			},
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "配置已应用",

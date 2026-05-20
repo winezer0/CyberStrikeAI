@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"cyberstrike-ai/internal/agent"
+	"cyberstrike-ai/internal/audit"
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/database"
 	"cyberstrike-ai/internal/reasoning"
@@ -131,6 +132,12 @@ type AgentHandler struct {
 	batchRunning      map[string]struct{}
 	// hitlWhitelistSaver 侧栏「应用」HITL 时将会话增量白名单合并写入 config.yaml（可选）
 	hitlWhitelistSaver HitlToolWhitelistSaver
+	audit              *audit.Service
+}
+
+// SetAudit wires platform audit logging.
+func (h *AgentHandler) SetAudit(s *audit.Service) {
+	h.audit = s
 }
 
 // HitlToolWhitelistSaver 合并 HITL 免审批工具到全局配置并落盘
@@ -2039,6 +2046,11 @@ func (h *AgentHandler) CreateBatchQueue(c *gin.Context) {
 			queue = refreshed
 		}
 	}
+	if h.audit != nil {
+		h.audit.RecordOK(c, "task", "create_queue", "创建批量任务队列", "batch_queue", queue.ID, map[string]interface{}{
+			"task_count": len(validTasks), "started": started,
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"queueId": queue.ID,
 		"queue":   queue,
@@ -2146,6 +2158,9 @@ func (h *AgentHandler) StartBatchQueue(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "队列不存在"})
 		return
 	}
+	if h.audit != nil {
+		h.audit.RecordOK(c, "task", "start_queue", "启动批量任务队列", "batch_queue", queueID, nil)
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "批量任务已开始执行", "queueId": queueID})
 }
 
@@ -2174,6 +2189,9 @@ func (h *AgentHandler) RerunBatchQueue(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "启动失败"})
 		return
 	}
+	if h.audit != nil {
+		h.audit.RecordOK(c, "task", "rerun_queue", "重跑批量任务队列", "batch_queue", queueID, nil)
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "批量任务已重新开始执行", "queueId": queueID})
 }
 
@@ -2184,6 +2202,9 @@ func (h *AgentHandler) PauseBatchQueue(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusNotFound, gin.H{"error": "队列不存在或无法暂停"})
 		return
+	}
+	if h.audit != nil {
+		h.audit.RecordOK(c, "task", "pause_queue", "暂停批量任务队列", "batch_queue", queueID, nil)
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "批量任务已暂停"})
 }
@@ -2280,6 +2301,16 @@ func (h *AgentHandler) DeleteBatchQueue(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "队列不存在"})
 		return
 	}
+	if h.audit != nil {
+		h.audit.Record(c, audit.Entry{
+			Category:     "task",
+			Action:       "delete_queue",
+			Result:       "success",
+			ResourceType: "batch_queue",
+			ResourceID:   queueID,
+			Message:      "删除批量任务队列",
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "批量任务队列已删除"})
 }
 
@@ -2364,6 +2395,11 @@ func (h *AgentHandler) DeleteBatchTask(c *gin.Context) {
 	if !exists {
 		c.JSON(http.StatusNotFound, gin.H{"error": "队列不存在"})
 		return
+	}
+	if h.audit != nil {
+		h.audit.RecordOK(c, "task", "delete_batch_task", "删除批量子任务", "batch_task", taskID, map[string]interface{}{
+			"batch_queue_id": queueID,
+		})
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "任务已删除", "queue": queue})
 }

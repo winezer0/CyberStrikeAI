@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cyberstrike-ai/internal/audit"
 	"cyberstrike-ai/internal/database"
 	"cyberstrike-ai/internal/mcp"
 	"cyberstrike-ai/internal/security"
@@ -23,6 +24,12 @@ type MonitorHandler struct {
 	executor       *security.Executor
 	db             *database.DB
 	logger         *zap.Logger
+	audit          *audit.Service
+}
+
+// SetAudit wires platform audit logging.
+func (h *MonitorHandler) SetAudit(s *audit.Service) {
+	h.audit = s
 }
 
 // NewMonitorHandler 创建新的监控处理器
@@ -365,6 +372,11 @@ func (h *MonitorHandler) DeleteExecution(c *gin.Context) {
 		}
 
 		h.logger.Info("执行记录已从数据库删除", zap.String("executionId", id), zap.String("toolName", exec.ToolName))
+		if h.audit != nil {
+			h.audit.RecordOK(c, "tool", "execution_delete", "删除工具执行记录", "tool_execution", id, map[string]interface{}{
+				"tool_name": exec.ToolName,
+			})
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "执行记录已删除"})
 		return
 	}
@@ -440,6 +452,11 @@ func (h *MonitorHandler) DeleteExecutions(c *gin.Context) {
 		}
 
 		h.logger.Info("批量删除执行记录成功", zap.Int("count", len(request.IDs)))
+		if h.audit != nil {
+			h.audit.RecordOK(c, "tool", "execution_delete_batch", "批量删除工具执行记录", "tool_execution", "", map[string]interface{}{
+				"count": len(request.IDs),
+			})
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "成功删除执行记录", "deleted": len(executions)})
 		return
 	}
