@@ -1825,7 +1825,7 @@
     "descPlaceholder": "何时由协调者调度该子代理",
     "fieldTools": "可用工具（逗号分隔，与角色工具 key 一致）",
     "fieldBindRole": "绑定角色（可选）",
-    "fieldMaxIter": "子代理最大迭代（0=使用全局默认）",
+    "fieldMaxIter": "最大迭代（0=沿用设置页 agent.max_iterations）",
     "fieldInstruction": "系统提示词（Markdown 正文）",
     "instructionPlaceholder": "You are a specialist agent...",
     "nameRequired": "请填写显示名称",

@@ -1836,7 +1836,7 @@
     "descPlaceholder": "When the orchestrator should delegate to this agent",
     "fieldTools": "Tools (comma-separated; same keys as role tools)",
     "fieldBindRole": "Bind role (optional)",
-    "fieldMaxIter": "Max sub-agent iterations (0 = use global default)",
+    "fieldMaxIter": "Max iterations (0 = use Settings → agent.max_iterations)",
     "fieldInstruction": "System prompt (Markdown body)",
     "instructionPlaceholder": "You are a specialist agent...",
     "nameRequired": "Display name is required",

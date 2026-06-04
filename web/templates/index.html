@@ -2348,7 +2348,7 @@
                                 <input type="text" id="agent-md-bind-role" placeholder="" autocomplete="off" />
                             </div>
                             <div class="form-group">
-                                <label data-i18n="agentsPage.fieldMaxIter">子代理最大迭代（0=使用全局默认）</label>
+                                <label data-i18n="agentsPage.fieldMaxIter">最大迭代（0=沿用设置页 agent.max_iterations）</label>
                                 <input type="number" id="agent-md-max-iter" min="0" value="0" />
                             </div>
                             <div class="form-group">
@@ -2564,7 +2564,7 @@
                                     <div class="settings-form">
                                         <div class="form-group">
                                             <label for="agent-max-iterations" data-i18n="settingsBasic.maxIterations">最大迭代次数</label>
-                                            <input type="number" id="agent-max-iterations" min="1" max="100" data-i18n="settingsBasic.iterationsPlaceholder" data-i18n-attr="placeholder" placeholder="30" />
+                                            <input type="number" id="agent-max-iterations" min="1" data-i18n="settingsBasic.iterationsPlaceholder" data-i18n-attr="placeholder" placeholder="30" />
                                         </div>
                                         <div class="form-group">
                                             <label class="checkbox-label">
