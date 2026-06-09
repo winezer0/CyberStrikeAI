@@ -22,6 +22,7 @@ var dashboardState = {
     dismissedAlertKey: null,    // 当前会话中被用户「×」掉的告警内容指纹（同样的 reasons 不再弹）
     lastResources: null,        // 上一轮关键资源快照，用于判断是否首次有数据 / 智能 CTA
     recentFeedTab: 'vulns',     // 最近漏洞 / 近期事实 Tab
+    accessTab: 'c2',            // 接入概览 Tab：c2 | webshell
     lastProjectSummary: null,   // 最近一次项目仪表盘摘要（供 Tab 切换时重绘）
 };
 
@@ -60,9 +61,13 @@ async function refreshDashboard() {
         hideEl('dashboard-alert-banner');
         setRecentVulnsLoading();
         setRecentFactsLoading();
-        ['tools', 'skills', 'knowledge', 'roles', 'agents', 'webshell'].forEach(function (k) {
+        ['tools', 'skills', 'knowledge', 'roles', 'agents'].forEach(function (k) {
             setEl('dashboard-resource-' + k, '…');
         });
+        setEl('dashboard-webshell-connections', '…');
+        setEl('dashboard-c2-listeners-running', '…');
+        setEl('dashboard-c2-sessions-online', '…');
+        setEl('dashboard-c2-tasks-pending', '…');
         var chartPlaceholder = document.getElementById('dashboard-tools-pie-placeholder');
         if (chartPlaceholder) { chartPlaceholder.style.removeProperty('display'); chartPlaceholder.textContent = (typeof window.t === 'function' ? window.t('common.loading') : '加载中…'); }
         var barChartEl = document.getElementById('dashboard-tools-bar-chart');
@@ -378,18 +383,6 @@ async function refreshDashboard() {
         } else {
             setEl('dashboard-resource-agents', '-');
         }
-        // WebShell 已建立的连接：/api/webshell/connections 直接返回数组（不带包裹），
-        // 兼容一下 { connections: [...] } 形式以防后续接口变更
-        var webshellList = null;
-        if (Array.isArray(webshellRes)) webshellList = webshellRes;
-        else if (webshellRes && Array.isArray(webshellRes.connections)) webshellList = webshellRes.connections;
-        var webshellCount = webshellList ? webshellList.length : null;
-        if (webshellCount !== null) {
-            setEl('dashboard-resource-webshell', formatNumber(webshellCount));
-        } else {
-            setEl('dashboard-resource-webshell', '-');
-        }
-
         // 最近漏洞列表
         renderRecentVulns(recentVulnsRes);
         dashboardState.lastProjectSummary = projectSummaryRes;
@@ -404,8 +397,8 @@ async function refreshDashboard() {
         // 「最近事件」内联展示（来自通知摘要，过滤掉已经被仪表盘其他位置覆盖的类型）
         renderRecentEvents(notificationsRes);
 
-        // C2 概览条（监听器 / 在线会话 / 待处理任务）
-        renderDashboardC2Overview(c2ListenersRes, c2SessionsRes, c2TasksRes);
+        // 接入概览（C2 + WebShell）
+        renderDashboardAccessOverview(c2ListenersRes, c2SessionsRes, c2TasksRes, webshellRes);
 
         // 关键提醒条：把所有可能的告警源（漏洞/HITL/失败率/MCP健康）合并展示
         renderDashboardAlertBanner({
@@ -455,11 +448,11 @@ async function refreshDashboard() {
         setKpiSubText('dashboard-kpi-vuln-sub-text', '-');
         setKpiSubText('dashboard-kpi-tools-sub-text', '-');
         setKpiSubText('dashboard-kpi-rate-sub-text', '-');
-        ['tools', 'skills', 'knowledge', 'roles', 'agents', 'webshell'].forEach(function (k) {
+        ['tools', 'skills', 'knowledge', 'roles', 'agents'].forEach(function (k) {
             setEl('dashboard-resource-' + k, '-');
         });
-        var c2secErr = document.getElementById('dashboard-section-c2');
-        if (c2secErr) c2secErr.hidden = true;
+        var accessSecErr = document.getElementById('dashboard-section-access');
+        if (accessSecErr) accessSecErr.hidden = true;
         setRecentVulnsError();
         setRecentFactsError();
         renderDashboardToolsBar(null);
@@ -475,51 +468,179 @@ async function refreshDashboard() {
     }
 }
 
-/** C2 概览条：依赖 /api/c2/listeners、sessions、tasks；任一路由失败则整块隐藏 */
-function renderDashboardC2Overview(listenersRes, sessionsRes, tasksRes) {
-    var section = document.getElementById('dashboard-section-c2');
+/** 接入概览：C2 / WebShell Tab 切换；C2 禁用时仅保留 WebShell Tab */
+function renderDashboardAccessOverview(listenersRes, sessionsRes, tasksRes, webshellRes) {
+    var section = document.getElementById('dashboard-section-access');
     if (!section) return;
-    if (listenersRes === null && sessionsRes === null && tasksRes === null) {
+
+    var c2ConfigOn = window.__c2Enabled !== false;
+    var webshellList = null;
+    if (Array.isArray(webshellRes)) webshellList = webshellRes;
+    else if (webshellRes && Array.isArray(webshellRes.connections)) webshellList = webshellRes.connections;
+    var wsApiOk = webshellRes !== null;
+    var c2ApiOk = listenersRes !== null || sessionsRes !== null || tasksRes !== null;
+    var showC2 = c2ConfigOn && c2ApiOk;
+    var showWs = wsApiOk;
+
+    section.dataset.c2Available = showC2 ? '1' : '0';
+    section.dataset.webshellAvailable = showWs ? '1' : '0';
+
+    if (!showC2 && !showWs) {
         section.hidden = true;
         return;
     }
-    var running = '-';
-    if (listenersRes && Array.isArray(listenersRes.listeners)) {
-        running = String(listenersRes.listeners.filter(function (l) {
-            return (l && (l.status || '').toLowerCase() === 'running');
-        }).length);
-    } else if (listenersRes === null) {
-        running = '-';
-    } else {
-        running = '0';
+
+    if (showC2) {
+        var running = '-';
+        if (listenersRes && Array.isArray(listenersRes.listeners)) {
+            running = String(listenersRes.listeners.filter(function (l) {
+                return (l && (l.status || '').toLowerCase() === 'running');
+            }).length);
+        } else if (listenersRes === null) {
+            running = '-';
+        } else {
+            running = '0';
+        }
+        var online = '-';
+        if (sessionsRes && Array.isArray(sessionsRes.sessions)) {
+            online = String(sessionsRes.sessions.filter(function (s) {
+                if (!s) return false;
+                var st = (s.status || '').toLowerCase();
+                return st === 'active' || st === 'sleeping';
+            }).length);
+        } else if (sessionsRes === null) {
+            online = '-';
+        } else {
+            online = '0';
+        }
+        var pending = '-';
+        if (tasksRes && typeof tasksRes.pending_queued_count === 'number') {
+            pending = String(tasksRes.pending_queued_count);
+        } else if (tasksRes === null) {
+            pending = '-';
+        } else {
+            pending = '0';
+        }
+        setEl('dashboard-c2-listeners-running', running);
+        setEl('dashboard-c2-sessions-online', online);
+        setEl('dashboard-c2-tasks-pending', pending);
     }
-    var online = '-';
-    if (sessionsRes && Array.isArray(sessionsRes.sessions)) {
-        online = String(sessionsRes.sessions.filter(function (s) {
-            if (!s) return false;
-            var st = (s.status || '').toLowerCase();
-            return st === 'active' || st === 'sleeping';
-        }).length);
-    } else if (sessionsRes === null) {
-        online = '-';
-    } else {
-        online = '0';
+
+    if (showWs) {
+        var wsCount = webshellList ? webshellList.length : 0;
+        setEl('dashboard-webshell-connections', formatNumber(wsCount));
+        renderDashboardWebshellRecent(webshellList || []);
     }
-    var pending = '-';
-    if (tasksRes && typeof tasksRes.pending_queued_count === 'number') {
-        pending = String(tasksRes.pending_queued_count);
-    } else if (tasksRes === null) {
-        pending = '-';
-    } else {
-        pending = '0';
-    }
-    setEl('dashboard-c2-listeners-running', running);
-    setEl('dashboard-c2-sessions-online', online);
-    setEl('dashboard-c2-tasks-pending', pending);
+
     section.hidden = false;
+    syncDashboardAccessTabs();
     if (typeof applyTranslations === 'function') {
         try { applyTranslations(section); } catch (_e) { /* ignore */ }
     }
+}
+
+/** C2 / WebShell Tab 切换（样式与「最近漏洞 / 近期事实」一致） */
+function switchDashboardAccessTab(tab) {
+    tab = tab === 'webshell' ? 'webshell' : 'c2';
+    dashboardState.accessTab = tab;
+    applyDashboardAccessTabUI(tab);
+}
+
+function applyDashboardAccessTabUI(tab) {
+    var tabC2 = document.getElementById('dashboard-access-tab-c2');
+    var tabWs = document.getElementById('dashboard-access-tab-webshell');
+    var panelC2 = document.getElementById('dashboard-access-panel-c2');
+    var panelWs = document.getElementById('dashboard-access-panel-webshell');
+    if (tabC2) {
+        tabC2.classList.toggle('is-active', tab === 'c2');
+        tabC2.setAttribute('aria-selected', tab === 'c2' ? 'true' : 'false');
+    }
+    if (tabWs) {
+        tabWs.classList.toggle('is-active', tab === 'webshell');
+        tabWs.setAttribute('aria-selected', tab === 'webshell' ? 'true' : 'false');
+    }
+    if (panelC2) panelC2.hidden = tab !== 'c2';
+    if (panelWs) panelWs.hidden = tab !== 'webshell';
+    updateDashboardAccessViewAll(tab);
+}
+
+function updateDashboardAccessViewAll(tab) {
+    var link = document.getElementById('dashboard-access-view-all');
+    if (!link) return;
+    if (tab === 'webshell') {
+        link.onclick = function () { try { switchPage('webshell'); } catch (_) {} };
+        link.setAttribute('data-i18n', 'dashboard.webshellGoManage');
+        link.textContent = dt('dashboard.webshellGoManage', null, '进入 WebShell →');
+    } else {
+        link.onclick = function () { try { switchPage('c2-listeners'); } catch (_) {} };
+        link.setAttribute('data-i18n', 'dashboard.c2GoManage');
+        link.textContent = dt('dashboard.c2GoManage', null, '进入 C2 →');
+    }
+}
+
+/** 根据可用模块同步 Tab 可见性与默认选中项 */
+function syncDashboardAccessTabs() {
+    var section = document.getElementById('dashboard-section-access');
+    if (!section || section.hidden) return;
+
+    var showC2 = section.dataset.c2Available === '1';
+    var showWs = section.dataset.webshellAvailable === '1';
+    var tabNav = document.getElementById('dashboard-access-tabs');
+    var tabC2 = document.getElementById('dashboard-access-tab-c2');
+    var tabWs = document.getElementById('dashboard-access-tab-webshell');
+
+    if (tabC2) tabC2.hidden = !showC2;
+    if (tabWs) tabWs.hidden = !showWs;
+    if (tabNav) tabNav.hidden = false;
+
+    var tab = dashboardState.accessTab;
+    if (tab === 'c2' && !showC2) tab = 'webshell';
+    if (tab === 'webshell' && !showWs) tab = 'c2';
+    if (!showC2 && showWs) tab = 'webshell';
+    if (showC2 && !showWs) tab = 'c2';
+    dashboardState.accessTab = tab;
+    applyDashboardAccessTabUI(tab);
+}
+
+/** WebShell 接入概览：最近 3 条连接摘要 */
+function renderDashboardWebshellRecent(list) {
+    var container = document.getElementById('dashboard-webshell-recent');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!list || list.length === 0) {
+        container.hidden = true;
+        return;
+    }
+    var sorted = list.slice().sort(function (a, b) {
+        var ta = (a && a.createdAt) ? Date.parse(a.createdAt) : 0;
+        var tb = (b && b.createdAt) ? Date.parse(b.createdAt) : 0;
+        return tb - ta;
+    });
+    var recent = sorted.slice(0, 3);
+    recent.forEach(function (conn) {
+        if (!conn) return;
+        var item = document.createElement('div');
+        item.className = 'dashboard-webshell-recent-item';
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        var label = (conn.remark || '').trim() || (conn.url || '').trim() || (conn.id || '');
+        var typeTag = (conn.type || 'shell').toUpperCase();
+        item.innerHTML =
+            '<span class="dashboard-webshell-recent-type">' + esc(typeTag) + '</span>' +
+            '<span class="dashboard-webshell-recent-label" title="' + esc(label) + '">' + esc(label) + '</span>';
+        var openWs = function () {
+            try { switchPage('webshell'); } catch (_) {}
+        };
+        item.addEventListener('click', openWs);
+        item.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openWs();
+            }
+        });
+        container.appendChild(item);
+    });
+    container.hidden = false;
 }
 
 function setEl(id, text) {
@@ -1096,12 +1217,9 @@ function renderRecentVulns(res) {
     if (list.length === 0) {
         if (empty) {
             empty.hidden = false;
-            // 升级版空状态：图标 + 标题 + 描述 + 行动按钮，比纯文本更易引导用户下一步
+            // 升级版空状态：标题 + 描述 + 行动按钮，比纯文本更易引导用户下一步
             empty.classList.add('is-rich');
             empty.innerHTML = (
-                '<span class="dashboard-empty-icon" aria-hidden="true">' +
-                '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>' +
-                '</span>' +
                 '<div class="dashboard-empty-title">' + esc(dt('dashboard.noVulnYet', null, '暂无最近漏洞')) + '</div>' +
                 '<div class="dashboard-empty-desc">' + esc(dt('dashboard.noVulnDesc', null, '此处展示近期漏洞记录；在对话中完成检测后，新结果会出现在这里')) + '</div>' +
                 '<button type="button" class="dashboard-empty-action" data-action="scan">' +
@@ -1261,16 +1379,13 @@ function renderRecentFacts(res) {
             empty.hidden = false;
             empty.classList.add('is-rich');
             var desc = activeProjects > 0
-                ? dt('dashboard.noFactsDesc', null, '在绑定项目的对话中，Agent 会自动记录目标、漏洞、攻击链等事实；新事实会出现在这里')
+                ? dt('dashboard.noFactsDesc', null, '在绑定项目的对话中，Agent 会自动记录目标、漏洞、攻击链等事实')
                 : dt('projects.selectOrCreateHint', null, '项目用于跨对话共享「事实黑板」：目标、环境、认证等信息会在绑定项目的对话中自动注入。');
             var ctaLabel = activeProjects > 0
                 ? dt('dashboard.goToChat', null, '前往对话')
                 : dt('dashboard.createFirstProjectBtn', null, '创建第一个项目');
             var ctaAction = activeProjects > 0 ? 'chat' : 'project';
             empty.innerHTML = (
-                '<span class="dashboard-empty-icon" aria-hidden="true">' +
-                '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-                '</span>' +
                 '<div class="dashboard-empty-title">' + esc(dt('dashboard.noFactsYet', null, '暂无近期事实')) + '</div>' +
                 '<div class="dashboard-empty-desc">' + esc(desc) + '</div>' +
                 '<button type="button" class="dashboard-empty-action" data-action="' + esc(ctaAction) + '">' +

@@ -592,25 +592,39 @@
                                             </div>
                                         </div>
                                     </section>
-                                    <!-- C2 概览：介于「最近漏洞」与「批量任务队列」之间 -->
-                                    <section class="dashboard-section dashboard-section-c2" id="dashboard-section-c2" hidden>
-                                        <div class="dashboard-section-header">
-                                            <h3 class="dashboard-section-title" data-i18n="dashboard.c2OverviewTitle">C2 概览</h3>
-                                            <a class="dashboard-section-link" onclick="switchPage('c2-listeners')" data-i18n="dashboard.c2GoManage">进入 C2 →</a>
+                                    <!-- 接入概览：C2 / WebShell Tab 切换（样式同「最近漏洞 / 近期事实」） -->
+                                    <section class="dashboard-section dashboard-section-access" id="dashboard-section-access" hidden>
+                                        <div class="dashboard-section-header dashboard-section-header--tabs">
+                                            <nav class="dashboard-feed-tabs" id="dashboard-access-tabs" role="tablist" aria-label="C2 与 WebShell" data-i18n="dashboard.accessTabsAria" data-i18n-attr="aria-label">
+                                                <button type="button" class="dashboard-feed-tab is-active" role="tab" id="dashboard-access-tab-c2" aria-selected="true" aria-controls="dashboard-access-panel-c2" onclick="switchDashboardAccessTab('c2')" data-i18n="nav.c2">C2</button>
+                                                <button type="button" class="dashboard-feed-tab" role="tab" id="dashboard-access-tab-webshell" aria-selected="false" aria-controls="dashboard-access-panel-webshell" onclick="switchDashboardAccessTab('webshell')" data-i18n="dashboard.webshellLabel">WebShell</button>
+                                            </nav>
+                                            <a class="dashboard-section-link" id="dashboard-access-view-all" onclick="switchPage('c2-listeners')" data-i18n="dashboard.c2GoManage">进入 C2 →</a>
                                         </div>
-                                        <div class="dashboard-c2-strip">
-                                            <div class="dashboard-c2-stat" role="button" tabindex="0" onclick="switchPage('c2-listeners')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('c2-listeners'); }" data-i18n="dashboard.c2ClickListeners" data-i18n-attr="title" title="查看监听器">
-                                                <span class="dashboard-c2-stat-value" id="dashboard-c2-listeners-running">-</span>
-                                                <span class="dashboard-c2-stat-label" data-i18n="dashboard.c2ListenersRunning">运行中监听器</span>
+                                        <div class="dashboard-feed-panel" id="dashboard-access-panel-c2" role="tabpanel" aria-labelledby="dashboard-access-tab-c2">
+                                            <div class="dashboard-access-strip">
+                                                <div class="dashboard-access-stat dashboard-access-stat--c2" role="button" tabindex="0" onclick="switchPage('c2-listeners')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('c2-listeners'); }" data-i18n="dashboard.c2ClickListeners" data-i18n-attr="title" title="查看监听器">
+                                                    <span class="dashboard-access-stat-value" id="dashboard-c2-listeners-running">-</span>
+                                                    <span class="dashboard-access-stat-label" data-i18n="dashboard.c2ListenersRunning">运行中监听器</span>
+                                                </div>
+                                                <div class="dashboard-access-stat dashboard-access-stat--c2" role="button" tabindex="0" onclick="switchPage('c2-sessions')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('c2-sessions'); }" data-i18n="dashboard.c2ClickSessions" data-i18n-attr="title" title="查看会话">
+                                                    <span class="dashboard-access-stat-value" id="dashboard-c2-sessions-online">-</span>
+                                                    <span class="dashboard-access-stat-label" data-i18n="dashboard.c2SessionsOnline">在线会话</span>
+                                                </div>
+                                                <div class="dashboard-access-stat dashboard-access-stat--c2" role="button" tabindex="0" onclick="switchPage('c2-tasks')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('c2-tasks'); }" data-i18n="dashboard.c2ClickTasks" data-i18n-attr="title" title="查看任务">
+                                                    <span class="dashboard-access-stat-value" id="dashboard-c2-tasks-pending">-</span>
+                                                    <span class="dashboard-access-stat-label" data-i18n="dashboard.c2TasksPending">待审 / 排队任务</span>
+                                                </div>
                                             </div>
-                                            <div class="dashboard-c2-stat" role="button" tabindex="0" onclick="switchPage('c2-sessions')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('c2-sessions'); }" data-i18n="dashboard.c2ClickSessions" data-i18n-attr="title" title="查看会话">
-                                                <span class="dashboard-c2-stat-value" id="dashboard-c2-sessions-online">-</span>
-                                                <span class="dashboard-c2-stat-label" data-i18n="dashboard.c2SessionsOnline">在线会话</span>
+                                        </div>
+                                        <div class="dashboard-feed-panel" id="dashboard-access-panel-webshell" role="tabpanel" aria-labelledby="dashboard-access-tab-webshell" hidden>
+                                            <div class="dashboard-access-strip dashboard-access-strip--webshell">
+                                                <div class="dashboard-access-stat dashboard-access-stat--webshell" role="button" tabindex="0" onclick="switchPage('webshell')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('webshell'); }" data-i18n="dashboard.webshellClickConnections" data-i18n-attr="title" title="查看连接">
+                                                    <span class="dashboard-access-stat-value" id="dashboard-webshell-connections">-</span>
+                                                    <span class="dashboard-access-stat-label" data-i18n="dashboard.webshellConnections">活跃连接</span>
+                                                </div>
                                             </div>
-                                            <div class="dashboard-c2-stat" role="button" tabindex="0" onclick="switchPage('c2-tasks')" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); switchPage('c2-tasks'); }" data-i18n="dashboard.c2ClickTasks" data-i18n-attr="title" title="查看任务">
-                                                <span class="dashboard-c2-stat-value" id="dashboard-c2-tasks-pending">-</span>
-                                                <span class="dashboard-c2-stat-label" data-i18n="dashboard.c2TasksPending">待审 / 排队任务</span>
-                                            </div>
+                                            <div class="dashboard-webshell-recent" id="dashboard-webshell-recent" hidden></div>
                                         </div>
                                     </section>
                                     <section class="dashboard-section dashboard-section-overview">
@@ -731,14 +745,6 @@
                                                 </span>
                                                 <span class="dashboard-resource-label" data-i18n="dashboard.agentsLabel">Agents</span>
                                                 <span class="dashboard-resource-value" id="dashboard-resource-agents">-</span>
-                                            </a>
-                                            <!-- WebShell 连接：渗透落地后建立的 foothold，对安全运维场景非常关键 -->
-                                            <a class="dashboard-resource-item" onclick="switchPage('webshell')" role="button" tabindex="0">
-                                                <span class="dashboard-resource-icon dashboard-resource-icon-webshell" aria-hidden="true">
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-                                                </span>
-                                                <span class="dashboard-resource-label" data-i18n="dashboard.webshellLabel">WebShell</span>
-                                                <span class="dashboard-resource-value" id="dashboard-resource-webshell">-</span>
                                             </a>
                                         </div>
                                     </section>

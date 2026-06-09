@@ -15287,39 +15287,64 @@ tr.mcp-stats-tool-row[data-tool-name]:focus-visible {
     .dashboard-kpi-row { grid-template-columns: 1fr; }
 }
 
-/* C2 概览：主列内卡片，外层样式复用 .dashboard-grid .dashboard-section */
+/* 接入概览（C2 / WebShell Tab）：主列内卡片，Tab 样式复用 .dashboard-feed-tabs */
 
-.dashboard-c2-strip {
+.dashboard-access-strip {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
 }
 
-@media (max-width: 720px) {
-    .dashboard-c2-strip { grid-template-columns: 1fr; }
+.dashboard-access-strip--webshell {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 100%;
 }
 
-.dashboard-c2-stat {
-    background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 100%);
+@media (max-width: 720px) {
+    .dashboard-access-strip { grid-template-columns: 1fr; }
+    .dashboard-access-strip--webshell { grid-template-columns: 1fr; }
+}
+
+.dashboard-access-stat {
     border-radius: 12px;
     padding: 14px 16px;
     cursor: pointer;
-    border: 1px solid rgba(99, 102, 241, 0.14);
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.dashboard-c2-stat:hover {
+.dashboard-access-stat--c2 {
+    background: linear-gradient(145deg, #f8fafc 0%, #eef2ff 100%);
+    border: 1px solid rgba(99, 102, 241, 0.14);
+}
+
+.dashboard-access-stat--c2:hover {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(99, 102, 241, 0.12);
     border-color: rgba(99, 102, 241, 0.28);
 }
 
-.dashboard-c2-stat:focus-visible {
+.dashboard-access-stat--c2:focus-visible {
     outline: 2px solid rgba(99, 102, 241, 0.45);
     outline-offset: 2px;
 }
 
-.dashboard-c2-stat-value {
+.dashboard-access-stat--webshell {
+    background: linear-gradient(145deg, #f8fafc 0%, #ecfdf5 100%);
+    border: 1px solid rgba(16, 185, 129, 0.16);
+}
+
+.dashboard-access-stat--webshell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.dashboard-access-stat--webshell:focus-visible {
+    outline: 2px solid rgba(16, 185, 129, 0.45);
+    outline-offset: 2px;
+}
+
+.dashboard-access-stat-value {
     font-size: 1.625rem;
     font-weight: 800;
     color: var(--text-primary);
@@ -15328,12 +15353,70 @@ tr.mcp-stats-tool-row[data-tool-name]:focus-visible {
     font-variant-numeric: tabular-nums;
 }
 
-.dashboard-c2-stat-label {
+.dashboard-access-stat-label {
     display: block;
     margin-top: 6px;
     font-size: 0.8125rem;
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+.dashboard-webshell-recent {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.dashboard-webshell-recent-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.1);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    min-width: 0;
+}
+
+.dashboard-webshell-recent-item:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.22);
+}
+
+.dashboard-webshell-recent-item:focus-visible {
+    outline: 2px solid rgba(16, 185, 129, 0.4);
+    outline-offset: 2px;
+}
+
+.dashboard-webshell-recent-type {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.14);
+    color: #047857;
+}
+
+.dashboard-webshell-recent-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-webshell-recent-empty {
+    margin-top: 10px;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
 }
 
 .dashboard-kpi-card {
@@ -15834,7 +15917,7 @@ tr.mcp-stats-tool-row[data-tool-name]:focus-visible {
     color: #b91c1c;
 }
 
-/* 升级版「最近漏洞」空状态：图标 + 标题 + 描述 + 行动按钮 */
+/* 升级版「最近漏洞」空状态：标题 + 描述 + 行动按钮 */
 .dashboard-recent-vulns-empty.is-rich {
     display: flex;
     flex-direction: column;
@@ -15843,11 +15926,6 @@ tr.mcp-stats-tool-row[data-tool-name]:focus-visible {
     padding: 28px 16px;
     text-align: center;
     gap: 8px;
-}
-
-.dashboard-empty-icon {
-    color: #c7d2fe;
-    margin-bottom: 4px;
 }
 
 .dashboard-empty-title {
