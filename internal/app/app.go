@@ -315,6 +315,14 @@ func New(cfg *config.Config, log *logger.Logger, configPath string) (*App, error
 	skillsDir := skillpackage.SkillsRootFromConfig(cfg.SkillsDir, configPath)
 	log.Logger.Info("Skills 目录（Eino ADK skill 中间件 + Web 管理 API）", zap.String("skillsDir", skillsDir))
 	configDir := filepath.Dir(configPath)
+	plantaskRel := strings.TrimSpace(cfg.MultiAgent.EinoMiddleware.PlantaskRelDir)
+	if plantaskRel == "" {
+		plantaskRel = ".eino/plantask"
+	}
+	plantaskBase := filepath.Join(skillsDir, plantaskRel)
+	// Match eino_adk_run_loop: checkpoint_dir is used as configured (relative to process CWD when not absolute).
+	checkpointBase := strings.TrimSpace(cfg.MultiAgent.EinoMiddleware.CheckpointDir)
+	db.SetEinoConversationDirs(plantaskBase, checkpointBase)
 	agent.SetPromptBaseDir(configDir)
 
 	agentsDir := cfg.AgentsDir
