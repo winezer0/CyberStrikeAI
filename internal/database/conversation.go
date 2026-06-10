@@ -565,17 +565,51 @@ func (db *DB) DeleteConversation(id string) error {
 	if err != nil {
 		return fmt.Errorf("删除对话失败: %w", err)
 	}
-	// Best-effort cleanup for conversation-scoped filesystem artifacts
-	// (e.g., summarization transcript, reduction/checkpoint files under conversation_artifacts/<id>).
-	if base := strings.TrimSpace(db.conversationArtifactsDir); base != "" {
-		artDir := filepath.Join(base, id)
-		if rmErr := os.RemoveAll(artDir); rmErr != nil {
-			db.logger.Warn("删除会话 artifacts 目录失败", zap.String("conversationId", id), zap.String("dir", artDir), zap.Error(rmErr))
-		}
-	}
+	db.removeConversationScopedDirs(id)
 
 	db.logger.Info("对话及其所有相关数据已删除", zap.String("conversationId", id))
 	return nil
+}
+
+func sanitizeConversationPathSegment(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "default"
+	}
+	s = strings.ReplaceAll(s, string(filepath.Separator), "-")
+	s = strings.ReplaceAll(s, "/", "-")
+	s = strings.ReplaceAll(s, "\\", "-")
+	s = strings.ReplaceAll(s, "..", "__")
+	if len(s) > 180 {
+		s = s[:180]
+	}
+	return s
+}
+
+func (db *DB) removeConversationScopedDir(base, conversationID, label string) {
+	base = strings.TrimSpace(base)
+	if base == "" {
+		return
+	}
+	dir := filepath.Join(base, sanitizeConversationPathSegment(conversationID))
+	if rmErr := os.RemoveAll(dir); rmErr != nil {
+		if db.logger != nil {
+			db.logger.Warn("删除会话目录失败",
+				zap.String("conversationId", conversationID),
+				zap.String("kind", label),
+				zap.String("dir", dir),
+				zap.Error(rmErr))
+		}
+	}
+}
+
+func (db *DB) removeConversationScopedDirs(conversationID string) {
+	// summarization transcript, reduction files, etc.
+	db.removeConversationScopedDir(db.conversationArtifactsDir, conversationID, "conversation_artifacts")
+	// Eino plantask JSON boards (skills_dir/.eino/plantask/<id>/).
+	db.removeConversationScopedDir(db.einoPlantaskBaseDir, conversationID, "plantask")
+	// Eino ADK runner checkpoints (checkpoint_dir/<id>/).
+	db.removeConversationScopedDir(db.einoCheckpointBaseDir, conversationID, "eino_checkpoint")
 }
 
 // SaveAgentTrace 保存最后一轮代理消息轨迹与助手输出摘要。

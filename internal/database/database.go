@@ -49,6 +49,8 @@ type DB struct {
 	*sql.DB
 	logger                   *zap.Logger
 	conversationArtifactsDir string
+	einoPlantaskBaseDir      string // skills_dir + plantask_rel_dir (per-conversation subdirs)
+	einoCheckpointBaseDir    string // checkpoint_dir root (per-conversation subdirs)
 	checkpointLoopName       string
 	checkpointStop           chan struct{}
 	checkpointDone           chan struct{}
@@ -153,6 +155,16 @@ func NewDB(dbPath string, logger *zap.Logger) (*DB, error) {
 	database.startPassiveCheckpointLoop("conversations")
 
 	return database, nil
+}
+
+// SetEinoConversationDirs configures best-effort filesystem cleanup on DeleteConversation.
+// plantaskBase is skills_root/plantask_rel (no conversation id); checkpointBase is checkpoint_dir root.
+func (db *DB) SetEinoConversationDirs(plantaskBase, checkpointBase string) {
+	if db == nil {
+		return
+	}
+	db.einoPlantaskBaseDir = strings.TrimSpace(plantaskBase)
+	db.einoCheckpointBaseDir = strings.TrimSpace(checkpointBase)
 }
 
 // initTables 初始化数据库表
