@@ -2429,6 +2429,11 @@ function handleStreamEvent(event, progressElement, progressId,
             const respMid = responseData.messageId;
             if (respMid) {
                 applyBackendMessageIdToAssistantDom(assistantIdFinal, respMid);
+                if (typeof window.syncAssistantReasoningContentFromServer === 'function') {
+                    setTimeout(function () {
+                        window.syncAssistantReasoningContentFromServer(respMid, assistantIdFinal);
+                    }, 400);
+                }
             }
 
             setTimeout(() => {

@@ -2098,9 +2098,14 @@ function webshellAiConvListSelect(conn, convId, messagesContainer, listEl) {
                     }
                 }
                 messagesContainer.appendChild(div);
-                if (role === 'assistant' && msg.processDetails && msg.processDetails.length > 0) {
-                    var block = renderWebshellProcessDetailsBlock(msg.processDetails, true);
-                    if (block) messagesContainer.appendChild(block);
+                if (role === 'assistant') {
+                    var wsMergedDetails = (typeof window.mergeMessageReasoningContentIntoProcessDetails === 'function')
+                        ? window.mergeMessageReasoningContentIntoProcessDetails(msg.processDetails || [], msg.reasoningContent)
+                        : (msg.processDetails || []);
+                    if (wsMergedDetails.length > 0) {
+                        var block = renderWebshellProcessDetailsBlock(wsMergedDetails, true);
+                        if (block) messagesContainer.appendChild(block);
+                    }
                 }
             });
             if (list.length === 0) {
@@ -3023,9 +3028,14 @@ function loadWebshellAiHistory(conn, messagesContainer) {
                     }
                 }
                 messagesContainer.appendChild(div);
-                if (role === 'assistant' && msg.processDetails && msg.processDetails.length > 0) {
-                    var block = renderWebshellProcessDetailsBlock(msg.processDetails, true);
-                    if (block) messagesContainer.appendChild(block);
+                if (role === 'assistant') {
+                    var wsHistMerged = (typeof window.mergeMessageReasoningContentIntoProcessDetails === 'function')
+                        ? window.mergeMessageReasoningContentIntoProcessDetails(msg.processDetails || [], msg.reasoningContent)
+                        : (msg.processDetails || []);
+                    if (wsHistMerged.length > 0) {
+                        var block = renderWebshellProcessDetailsBlock(wsHistMerged, true);
+                        if (block) messagesContainer.appendChild(block);
+                    }
                 }
             });
             if (list.length === 0) {

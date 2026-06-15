@@ -2164,6 +2164,97 @@ function showCopySuccess(button) {
     }
 }
 
+/** Claude extended thinking 内部尾缀（与后端 DisplayReasoningContent 一致，UI 不展示） */
+const CLAUDE_REASONING_UI_SUFFIX = '\n---CSAI_CLAUDE_THINKING_BLOCKS---\n';
+
+function normalizeReasoningContentForDisplay(text) {
+    if (text == null) return '';
+    let s = String(text).trim();
+    if (!s) return '';
+    const idx = s.lastIndexOf(CLAUDE_REASONING_UI_SUFFIX);
+    if (idx >= 0) {
+        s = s.slice(0, idx).trim();
+    }
+    return s;
+}
+
+function setMessageReasoningContent(messageIdOrEl, reasoningContent) {
+    const el = typeof messageIdOrEl === 'string' ? document.getElementById(messageIdOrEl) : messageIdOrEl;
+    if (!el || !el.dataset) return;
+    const rc = normalizeReasoningContentForDisplay(reasoningContent);
+    if (rc) {
+        el.dataset.reasoningContent = rc;
+    } else {
+        delete el.dataset.reasoningContent;
+    }
+}
+
+function getMessageReasoningContent(messageIdOrEl) {
+    const el = typeof messageIdOrEl === 'string' ? document.getElementById(messageIdOrEl) : messageIdOrEl;
+    if (!el || !el.dataset) return '';
+    return normalizeReasoningContentForDisplay(el.dataset.reasoningContent || '');
+}
+
+function reasoningTextAlreadyInProcessDetails(processDetails, rc) {
+    if (!rc) return true;
+    const list = Array.isArray(processDetails) ? processDetails : [];
+    for (let i = 0; i < list.length; i++) {
+        const d = list[i];
+        if (!d) continue;
+        const et = d.eventType || '';
+        if (et !== 'reasoning_chain' && et !== 'thinking') continue;
+        const msg = normalizeReasoningContentForDisplay(d.message || '');
+        if (!msg) continue;
+        if (msg === rc || msg.includes(rc) || rc.includes(msg)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/** 合并 messages.reasoningContent 与 process_details 中的 reasoning_chain，两者都读、都展示（去重后） */
+function mergeMessageReasoningContentIntoProcessDetails(processDetails, reasoningContent) {
+    const rc = normalizeReasoningContentForDisplay(reasoningContent);
+    const details = Array.isArray(processDetails) ? processDetails.slice() : [];
+    if (!rc || reasoningTextAlreadyInProcessDetails(details, rc)) {
+        return details;
+    }
+    details.push({
+        eventType: 'reasoning_chain',
+        message: rc,
+        data: { source: 'message.reasoningContent' }
+    });
+    return details;
+}
+
+async function syncAssistantReasoningContentFromServer(backendMessageId, domAssistantId) {
+    if (!backendMessageId || !domAssistantId || !currentConversationId || typeof apiFetch !== 'function') {
+        return;
+    }
+    try {
+        const convRes = await apiFetch(`/api/conversations/${encodeURIComponent(currentConversationId)}?include_process_details=0`);
+        const conv = await convRes.json().catch(() => ({}));
+        if (!convRes.ok || !Array.isArray(conv.messages)) return;
+        const msg = conv.messages.find((m) => m && String(m.id) === String(backendMessageId));
+        if (!msg || !msg.reasoningContent) return;
+        setMessageReasoningContent(domAssistantId, msg.reasoningContent);
+        const pdRes = await apiFetch(`/api/messages/${encodeURIComponent(String(backendMessageId))}/process-details`);
+        const pdJson = await pdRes.json().catch(() => ({}));
+        const details = pdRes.ok && Array.isArray(pdJson.processDetails) ? pdJson.processDetails : [];
+        if (typeof renderProcessDetails === 'function') {
+            renderProcessDetails(domAssistantId, details);
+        }
+    } catch (e) {
+        console.warn('syncAssistantReasoningContentFromServer failed', e);
+    }
+}
+
+window.normalizeReasoningContentForDisplay = normalizeReasoningContentForDisplay;
+window.setMessageReasoningContent = setMessageReasoningContent;
+window.getMessageReasoningContent = getMessageReasoningContent;
+window.mergeMessageReasoningContentIntoProcessDetails = mergeMessageReasoningContentIntoProcessDetails;
+window.syncAssistantReasoningContentFromServer = syncAssistantReasoningContentFromServer;
+
 /** 相邻且类型/正文/data 完全一致的过程详情只保留一条（与后端去重一致，避免时间线叠多条相同块） */
 function dedupeConsecutiveProcessDetailRows(details) {
     if (!Array.isArray(details) || details.length < 2) {
@@ -2282,20 +2373,27 @@ function renderProcessDetails(messageId, processDetails) {
         detailsContainer.appendChild(contentDiv);
     }
     
-    // processDetails === null 表示“尚未加载（懒加载）”
+    // processDetails === null 表示“尚未加载（懒加载）”；messages.reasoningContent 可先展示
     const isLazyNotLoaded = (processDetails === null);
-    if (isLazyNotLoaded) {
+    const reasoningFromMessage = getMessageReasoningContent(messageElement);
+    if (isLazyNotLoaded && !reasoningFromMessage) {
         detailsContainer.dataset.lazyNotLoaded = '1';
         detailsContainer.dataset.loaded = '0';
         timeline.innerHTML = '<div class="progress-timeline-empty">' +
             (typeof window.t === 'function' ? window.t('chat.expandDetail') : '展开详情') +
             '（点击后加载）</div>';
-        // 默认折叠
         timeline.classList.remove('expanded');
         return;
     }
-    detailsContainer.dataset.lazyNotLoaded = '0';
-    detailsContainer.dataset.loaded = '1';
+    if (isLazyNotLoaded) {
+        detailsContainer.dataset.lazyNotLoaded = '1';
+        detailsContainer.dataset.loaded = '0';
+        processDetails = [];
+    } else {
+        detailsContainer.dataset.lazyNotLoaded = '0';
+        detailsContainer.dataset.loaded = '1';
+    }
+    processDetails = mergeMessageReasoningContentIntoProcessDetails(processDetails, reasoningFromMessage);
     processDetails = dedupeConsecutiveProcessDetailRows(processDetails);
     if (typeof window.coalesceProcessDetailsToolPairs === 'function') {
         processDetails = window.coalesceProcessDetailsToolPairs(processDetails);
@@ -2426,6 +2524,14 @@ function renderProcessDetails(messageId, processDetails) {
         }
         addTimelineItem(timeline, eventType, timelineOpts);
     });
+
+    if (isLazyNotLoaded && reasoningFromMessage) {
+        const lazyHint = document.createElement('div');
+        lazyHint.className = 'progress-timeline-empty progress-timeline-lazy-hint';
+        lazyHint.textContent = (typeof window.t === 'function' ? window.t('chat.expandDetail') : '展开详情') +
+            '（点击后加载完整过程详情）';
+        timeline.appendChild(lazyHint);
+    }
     
     // 检查是否有错误或取消事件，如果有，确保详情默认折叠（但仍有待审批 HITL 时保持展开，由 restoreHitlInlineForConversation 处理）
     const hasPendingHitlInDetails = processDetails.some(d => d && d.eventType === 'hitl_interrupt');
@@ -3193,6 +3299,9 @@ async function loadConversation(conversationId) {
                     attachDeleteTurnButton(messageEl);
                 }
                 if (msg.role === 'assistant') {
+                    if (messageEl && msg.reasoningContent) {
+                        setMessageReasoningContent(messageEl, msg.reasoningContent);
+                    }
                     const hasField = msg && Object.prototype.hasOwnProperty.call(msg, 'processDetails');
                     renderProcessDetails(messageId, hasField ? (msg.processDetails || []) : null);
                     if (msg.processDetails && msg.processDetails.length > 0) {
