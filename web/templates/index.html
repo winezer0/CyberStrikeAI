@@ -2413,12 +2413,12 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="openai-model"><span data-i18n="settingsBasic.model">模型</span> <span style="color: red;">*</span></label>
-                                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                                <input type="text" id="openai-model" data-i18n="settingsBasic.modelPlaceholder" data-i18n-attr="placeholder" placeholder="gpt-4" required style="flex: 1; min-width: 140px;" />
-                                                <select id="openai-model-select" class="model-pick-select" style="display: none; min-width: 160px; max-width: 240px;" title="">
+                                            <div class="model-pick-row">
+                                                <input type="text" id="openai-model" class="model-pick-input" data-i18n="settingsBasic.modelPlaceholder" data-i18n-attr="placeholder" placeholder="gpt-4" required />
+                                                <select id="openai-model-select" class="model-pick-native" style="display: none;" title="" aria-hidden="true" tabindex="-1">
                                                     <option value="" disabled data-i18n="settingsBasic.modelsListSelectPlaceholder">请选择模型</option>
                                                 </select>
-                                                <a href="javascript:void(0)" id="fetch-openai-models-btn" onclick="fetchModelList('openai')" style="font-size: 0.8125rem; color: var(--accent-color, #3182ce); text-decoration: none; cursor: pointer; user-select: none; white-space: nowrap;" data-i18n="settingsBasic.fetchModels">获取列表</a>
+                                                <a href="javascript:void(0)" id="fetch-openai-models-btn" class="model-pick-fetch-link" onclick="fetchModelList('openai')" data-i18n="settingsBasic.fetchModels">获取列表</a>
                                             </div>
                                             <small id="fetch-openai-models-hint" class="form-hint" style="display: none; font-size: 0.75rem; margin-top: 4px;"></small>
                                             <span id="fetch-openai-models-result" style="font-size: 0.75rem; margin-top: 2px; display: block;"></span>
@@ -2499,12 +2499,12 @@
                                             </div>
                                             <div class="form-group">
                                                 <label for="vision-model"><span data-i18n="settingsBasic.visionModel">视觉模型</span> <span style="color: red;">*</span></label>
-                                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                                    <input type="text" id="vision-model" data-i18n="settingsBasic.visionModelPlaceholder" data-i18n-attr="placeholder" placeholder="qwen-vl-max" style="flex: 1; min-width: 140px;" />
-                                                    <select id="vision-model-select" class="model-pick-select" style="display: none; min-width: 160px; max-width: 240px;">
+                                                <div class="model-pick-row">
+                                                    <input type="text" id="vision-model" class="model-pick-input" data-i18n="settingsBasic.visionModelPlaceholder" data-i18n-attr="placeholder" placeholder="qwen-vl-max" />
+                                                    <select id="vision-model-select" class="model-pick-native" style="display: none;" aria-hidden="true" tabindex="-1">
                                                         <option value="" disabled data-i18n="settingsBasic.modelsListSelectPlaceholder">请选择模型</option>
                                                     </select>
-                                                    <a href="javascript:void(0)" id="fetch-vision-models-btn" onclick="fetchModelList('vision')" style="font-size: 0.8125rem; color: var(--accent-color, #3182ce); text-decoration: none; cursor: pointer; user-select: none; white-space: nowrap;" data-i18n="settingsBasic.fetchModels">获取列表</a>
+                                                    <a href="javascript:void(0)" id="fetch-vision-models-btn" class="model-pick-fetch-link" onclick="fetchModelList('vision')" data-i18n="settingsBasic.fetchModels">获取列表</a>
                                                 </div>
                                                 <small id="fetch-vision-models-hint" class="form-hint" style="display: none; font-size: 0.75rem; margin-top: 4px;"></small>
                                                 <span id="fetch-vision-models-result" style="font-size: 0.75rem; margin-top: 2px; display: block;"></span>

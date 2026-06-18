@@ -1577,6 +1577,179 @@ function syncVisionFormEnabled() {
     }
 }
 
+const modelPickSelectMap = {};
+let modelPickSelectDocListener = false;
+
+function modelPickT(key) {
+    return typeof window.t === 'function' ? window.t(key) : key;
+}
+
+function closeAllModelPickDropdowns() {
+    Object.keys(modelPickSelectMap).forEach(function (id) {
+        modelPickSelectMap[id].wrapper.classList.remove('open');
+    });
+}
+
+function syncModelPickDropdown(selectId) {
+    const reg = modelPickSelectMap[selectId];
+    if (!reg) return;
+    const { select, dropdown, trigger, wrapper, menuList, countBadge } = reg;
+    const placeholder = modelPickT('settingsBasic.modelsListSelectPlaceholder');
+
+    menuList.innerHTML = '';
+    let optionCount = 0;
+    Array.prototype.forEach.call(select.options, function (opt) {
+        if (!opt.value) return;
+        optionCount += 1;
+        const item = document.createElement('div');
+        item.className = 'model-pick-option';
+        item.setAttribute('role', 'option');
+        item.setAttribute('data-value', opt.value);
+        if (opt.value === select.value) {
+            item.classList.add('is-selected');
+            item.setAttribute('aria-selected', 'true');
+        }
+        const check = document.createElement('span');
+        check.className = 'model-pick-option-check';
+        check.setAttribute('aria-hidden', 'true');
+        check.textContent = '✓';
+        const label = document.createElement('span');
+        label.className = 'model-pick-option-label';
+        label.textContent = opt.textContent;
+        item.appendChild(check);
+        item.appendChild(label);
+        menuList.appendChild(item);
+    });
+
+    const selectedOpt = select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+    const labelEl = trigger.querySelector('.model-pick-trigger-label');
+    if (labelEl) {
+        labelEl.textContent = (selectedOpt && selectedOpt.value) ? selectedOpt.textContent : placeholder;
+    }
+    if (countBadge) {
+        countBadge.textContent = String(optionCount);
+        countBadge.style.display = optionCount > 0 ? '' : 'none';
+    }
+    const header = wrapper.querySelector('.model-pick-menu-header');
+    if (header) {
+        header.textContent = optionCount > 0
+            ? placeholder + ' · ' + optionCount
+            : placeholder;
+    }
+
+    trigger.disabled = !!select.disabled;
+    wrapper.classList.toggle('is-disabled', !!select.disabled);
+    wrapper.style.display = optionCount > 0 ? '' : 'none';
+    select.style.display = 'none';
+}
+
+function enhanceModelPickSelect(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    if (select.dataset.modelPickEnhanced === '1') {
+        syncModelPickDropdown(selectId);
+        return;
+    }
+    select.dataset.modelPickEnhanced = '1';
+    select.classList.add('model-pick-native');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'model-pick-dropdown';
+    wrapper.style.display = 'none';
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'model-pick-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'model-pick-trigger-label';
+    labelSpan.textContent = modelPickT('settingsBasic.modelsListSelectPlaceholder');
+
+    const meta = document.createElement('span');
+    meta.className = 'model-pick-trigger-meta';
+
+    const countBadge = document.createElement('span');
+    countBadge.className = 'model-pick-count';
+    countBadge.style.display = 'none';
+
+    const caret = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    caret.setAttribute('class', 'model-pick-caret');
+    caret.setAttribute('viewBox', '0 0 16 16');
+    caret.setAttribute('aria-hidden', 'true');
+    caret.innerHTML = '<path fill="currentColor" d="M4.47 6.47a.75.75 0 0 1 1.06 0L8 8.94l2.47-2.47a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06z"/>';
+
+    meta.appendChild(countBadge);
+    meta.appendChild(caret);
+    trigger.appendChild(labelSpan);
+    trigger.appendChild(meta);
+
+    const menu = document.createElement('div');
+    menu.className = 'model-pick-menu';
+
+    const header = document.createElement('div');
+    header.className = 'model-pick-menu-header';
+    menu.appendChild(header);
+
+    const menuList = document.createElement('div');
+    menuList.className = 'model-pick-menu-list';
+    menuList.setAttribute('role', 'listbox');
+    menu.appendChild(menuList);
+
+    const parent = select.parentNode;
+    const fetchLink = parent.querySelector('.model-pick-fetch-link');
+    if (fetchLink) {
+        parent.insertBefore(wrapper, fetchLink);
+    } else {
+        parent.appendChild(wrapper);
+    }
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(menu);
+    wrapper.appendChild(select);
+
+    modelPickSelectMap[selectId] = {
+        wrapper,
+        trigger,
+        menu,
+        menuList,
+        countBadge,
+        select
+    };
+
+    if (!modelPickSelectDocListener) {
+        document.addEventListener('click', closeAllModelPickDropdowns);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeAllModelPickDropdowns();
+        });
+        modelPickSelectDocListener = true;
+    }
+
+    trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (select.disabled) return;
+        const open = wrapper.classList.contains('open');
+        closeAllModelPickDropdowns();
+        if (!open) wrapper.classList.add('open');
+    });
+
+    menuList.addEventListener('click', function (e) {
+        const opt = e.target.closest('.model-pick-option');
+        if (!opt) return;
+        const val = opt.getAttribute('data-value');
+        if (val === null || val === '') return;
+        if (select.value !== val) {
+            select.value = val;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        wrapper.classList.remove('open');
+        syncModelPickDropdown(selectId);
+    });
+
+    syncModelPickDropdown(selectId);
+}
+
 function initModelListControls() {
     const providerEl = document.getElementById('openai-provider');
     if (providerEl && !providerEl.dataset.modelListBound) {
@@ -1605,6 +1778,7 @@ function bindModelSelect(scope) {
     const select = document.getElementById(selectId);
     if (!select || select.dataset.bound) return;
     select.dataset.bound = '1';
+    enhanceModelPickSelect(selectId);
     select.addEventListener('change', function () {
         if (!select.value) return;
         const input = document.getElementById(inputId);
@@ -1641,6 +1815,10 @@ function syncModelListFetchButtons() {
     }
     if (openaiSelect && isClaudeOpenai) {
         openaiSelect.style.display = 'none';
+        const openaiWrap = modelPickSelectMap['openai-model-select'];
+        if (openaiWrap) openaiWrap.wrapper.style.display = 'none';
+    } else if (openaiSelect && !isClaudeOpenai) {
+        syncModelPickDropdown('openai-model-select');
     }
     if (openaiHint) {
         if (isClaudeOpenai) {
@@ -1663,6 +1841,10 @@ function syncModelListFetchButtons() {
     }
     if (visionSelect && isClaudeVision) {
         visionSelect.style.display = 'none';
+        const visionWrap = modelPickSelectMap['vision-model-select'];
+        if (visionWrap) visionWrap.wrapper.style.display = 'none';
+    } else if (visionSelect && !isClaudeVision) {
+        syncModelPickDropdown('vision-model-select');
     }
     if (visionHint) {
         if (isClaudeVision) {
@@ -1705,7 +1887,8 @@ function populateModelSelect(scope, models, currentValue) {
     } else {
         select.value = '';
     }
-    select.style.display = select.options.length > 1 ? '' : 'none';
+    enhanceModelPickSelect(selectId);
+    syncModelPickDropdown(selectId);
 }
 
 async function fetchModelList(scope) {

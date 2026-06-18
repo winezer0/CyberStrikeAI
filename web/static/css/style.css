@@ -5851,6 +5851,267 @@ header {
     box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
 }
 
+/* Model picker: input + custom dropdown */
+.model-pick-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+
+.model-pick-input {
+    flex: 1 1 140px;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.model-pick-input:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.model-pick-input:hover {
+    border-color: rgba(0, 102, 255, 0.45);
+}
+
+.model-pick-input.error {
+    border-color: var(--error-color);
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.model-pick-fetch-link {
+    flex: 0 0 auto;
+    align-self: center;
+    font-size: 0.8125rem;
+    color: var(--accent-color);
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    padding: 4px 2px;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.model-pick-fetch-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
+.model-pick-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.model-pick-dropdown {
+    position: relative;
+    flex: 0 0 auto;
+    min-width: 148px;
+    max-width: 220px;
+}
+
+.model-pick-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 0 10px 0 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.model-pick-trigger-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    font-weight: 500;
+}
+
+.model-pick-trigger-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.model-pick-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgba(0, 102, 255, 0.1);
+    color: var(--accent-color);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.model-pick-caret {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--text-secondary);
+    transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.model-pick-dropdown.open .model-pick-caret {
+    transform: rotate(180deg);
+    color: var(--accent-color);
+}
+
+.model-pick-trigger:hover:not(:disabled) {
+    border-color: rgba(0, 102, 255, 0.45);
+    background: var(--bg-primary);
+}
+
+.model-pick-dropdown.open .model-pick-trigger {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+    background: var(--bg-primary);
+}
+
+.model-pick-dropdown.is-disabled .model-pick-trigger {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.model-pick-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    z-index: 2000;
+    min-width: 280px;
+    max-width: min(360px, 92vw);
+    max-height: 300px;
+    overflow: hidden;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.model-pick-dropdown.open .model-pick-menu {
+    display: flex;
+    flex-direction: column;
+    animation: model-pick-menu-in 0.16s ease-out;
+}
+
+@keyframes model-pick-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.model-pick-menu-header {
+    flex: 0 0 auto;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
+
+.model-pick-menu-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.model-pick-menu-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.model-pick-menu-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+}
+
+.model-pick-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.model-pick-option:hover {
+    background: var(--bg-secondary);
+}
+
+.model-pick-option.is-selected {
+    background: rgba(0, 102, 255, 0.08);
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.model-pick-option-check {
+    flex: 0 0 14px;
+    width: 14px;
+    font-size: 0.75rem;
+    line-height: 1;
+    color: var(--accent-color);
+    opacity: 0;
+    text-align: center;
+}
+
+.model-pick-option.is-selected .model-pick-option-check {
+    opacity: 1;
+}
+
+.model-pick-option-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .batch-execute-now-label {
     display: inline-flex;
     align-items: center;
