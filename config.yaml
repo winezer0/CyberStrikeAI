@@ -91,7 +91,7 @@ fofa:
 # Agent 配置
 # 达到最大迭代次数时，AI 会自动总结测试结果
 agent:
-  result_storage_dir: tmp # 结果存储目录，大结果会保存在此目录下
+  max_iterations: 12000 # 全局最大迭代次数（单代理 / Deep / Supervisor / Plan-Execute 主执行器 / 子代理均沿用；agents/*.md 中 max_iterations>0 可单独覆盖）
   tool_timeout_minutes: 60 # 单次工具执行最大时长（分钟），超时自动终止；0 表示不限制（不推荐，易出现长时间挂起）
   # system_prompt_path: prompts/single-agent.md # 可选：单代理系统提示文件（相对本配置文件所在目录）；非空且可读时替换内置提示
 
