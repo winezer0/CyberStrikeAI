@@ -630,13 +630,16 @@ func runEinoADKAgentLoop(ctx context.Context, args *einoADKRunLoopArgs, baseMsgs
 					}
 				}
 			}
+			// 仅在代理切换时更新进度标题；同一代理的每个 ADK 事件不再重复刷 progress。
+			if einoLastAgent != ev.AgentName {
+				progress("progress", fmt.Sprintf("[Eino] %s", ev.AgentName), map[string]interface{}{
+					"conversationId": conversationID,
+					"einoAgent":      ev.AgentName,
+					"einoRole":       einoRoleTag(ev.AgentName),
+					"orchestration":  orchMode,
+				})
+			}
 			einoLastAgent = ev.AgentName
-			progress("progress", fmt.Sprintf("[Eino] %s", ev.AgentName), map[string]interface{}{
-				"conversationId": conversationID,
-				"einoAgent":      ev.AgentName,
-				"einoRole":       einoRoleTag(ev.AgentName),
-				"orchestration":  orchMode,
-			})
 		}
 		if ev.Output == nil || ev.Output.MessageOutput == nil {
 			continue
