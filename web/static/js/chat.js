@@ -3367,7 +3367,7 @@ function createConversationListItem(conversation) {
 // 处理历史记录搜索
 let conversationSearchTimer = null;
 function handleConversationSearch(query) {
-    conversationsPagination.page = 1;
+    commitConversationsPage(1, { bumpNavigateGen: true });
     conversationsSearchQuery = query || '';
     // 防抖处理，避免频繁请求
     if (conversationSearchTimer) {
@@ -3402,7 +3402,7 @@ function clearConversationSearch() {
         clearBtn.style.display = 'none';
     }
     
-    conversationsPagination.page = 1;
+    commitConversationsPage(1, { bumpNavigateGen: true });
     conversationsSearchQuery = '';
     loadConversations('');
 }
@@ -6303,7 +6303,7 @@ async function refreshConversationProjectFilter() {
 
 function onConversationProjectFilterChange(projectId) {
     setConversationProjectFilter(projectId || '');
-    conversationsPagination.page = 1;
+    commitConversationsPage(1, { bumpNavigateGen: true });
     loadConversationsWithGroups(conversationsSearchQuery);
 }
 
@@ -6410,7 +6410,7 @@ function setConversationSortBy(sortBy) {
     } catch (e) { /* ignore */ }
     updateConversationSortMenuUI();
     closeConversationSortMenu();
-    conversationsPagination.page = 1;
+    commitConversationsPage(1, { bumpNavigateGen: true });
     loadConversationsWithGroups(conversationsSearchQuery);
 }
 
@@ -6452,20 +6452,30 @@ function getConversationsTotalPages() {
     return Math.max(1, Math.ceil((total || 0) / pageSize) || 1);
 }
 
-function isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart) {
+/**
+ * 分页状态约定：
+ * - conversationsPagination.page 仅在此处（用户操作 / reconcile 钳制 / clamp）写入
+ * - loadConversationsWithGroups 只读页码，用 intentPage 或当前 page 计算 offset
+ * - isStaleConversationListLoad 丢弃页码或 navigateGen 已变的在途请求
+ */
+function commitConversationsPage(page, { bumpNavigateGen = false } = {}) {
+    const next = Math.max(1, parseInt(page, 10) || 1);
+    if (bumpNavigateGen) {
+        conversationsListNavigateGen += 1;
+    }
+    conversationsPagination.page = next;
+    return next;
+}
+
+function isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage) {
     if (loadSeq !== conversationsListLoadSeq) return true;
     // 后台刷新期间用户已翻页（含 2→1、1→2），丢弃过期结果
     if (intentPage == null && navigateGenAtStart !== conversationsListNavigateGen) return true;
+    // 用户主动翻页后，丢弃目标页已变化的请求
+    if (intentPage != null && intentPage !== conversationsPagination.page) return true;
+    // 后台刷新完成时页码已变（如 reconcile 钳制），丢弃过期结果
+    if (intentPage == null && activePage != null && activePage !== conversationsPagination.page) return true;
     return false;
-}
-
-function commitConversationsListPage(activePage, intentPage) {
-    if (intentPage != null) {
-        conversationsPagination.page = activePage;
-        return;
-    }
-    // 勿用加载开始时的旧页码覆盖用户中途翻页
-    if (conversationsPagination.page !== activePage) return;
 }
 
 function reconcileConversationsPageAfterTotal(activePage, intentPage, parsed, pageSize, offset, resolvedTotal) {
@@ -6478,31 +6488,34 @@ function reconcileConversationsPageAfterTotal(activePage, intentPage, parsed, pa
 
     const serverTotal = parseListTotalValue(parsed.total, parsed.items.length);
     const hasPageData = parsed.items.length > 0;
+    const knownTotal = conversationsPagination.total || 0;
     // 用户主动翻页且服务端确有该页数据时，不信过期/偏低的 total（避免 2>1 被钳回第 1 页）
-    if (intentPage != null && (hasPageData || serverTotal > offset || total > offset)) {
-        total = Math.max(total, serverTotal, offset + parsed.items.length);
+    if (intentPage != null && (hasPageData || serverTotal > offset || total > offset || knownTotal > offset)) {
+        total = Math.max(total, serverTotal, knownTotal, offset + parsed.items.length);
         if (activePage <= totalPages()) {
             return { ok: true, total };
         }
     }
 
     const clampedPage = totalPages();
-    conversationsPagination.page = clampedPage;
+    commitConversationsPage(clampedPage);
     return { ok: false, total, clampedPage };
 }
 
 function clampConversationsPageToTotal() {
     const totalPages = getConversationsTotalPages();
     if (conversationsPagination.page > totalPages) {
-        conversationsPagination.page = totalPages;
+        commitConversationsPage(totalPages);
         return true;
     }
     if (conversationsPagination.page < 1) {
-        conversationsPagination.page = 1;
+        commitConversationsPage(1);
         return true;
     }
     return false;
 }
+
+let conversationsPaginationRenderLock = false;
 
 function initConversationsPaginationEvents() {
     if (conversationsPaginationEventsBound) return;
@@ -6516,6 +6529,12 @@ function initConversationsPaginationEvents() {
         const page = parseInt(btn.getAttribute('data-conv-page'), 10);
         if (Number.isFinite(page)) {
             goConversationsPage(page);
+        }
+    });
+    el.addEventListener('change', (e) => {
+        if (conversationsPaginationRenderLock) return;
+        if (e.target && e.target.id === 'conversations-page-size-pagination') {
+            changeConversationsPageSize();
         }
     });
 }
@@ -6641,7 +6660,9 @@ function renderConversationsPagination(visibleCount) {
     const nextLabel = tFn ? tFn('chat.paginationNext') : 'Next';
     const prevPage = page - 1;
     const nextPage = page + 1;
-    el.innerHTML = `
+    conversationsPaginationRenderLock = true;
+    try {
+        el.innerHTML = `
         <div class="sidebar-list-pagination-inner sidebar-list-pagination-inner--compact">
             <span class="pagination-info">${escapeHtml(infoText)}</span>
             <div class="pagination-controls">
@@ -6651,21 +6672,22 @@ function renderConversationsPagination(visibleCount) {
             </div>
             <label class="pagination-page-size">
                 ${escapeHtml(perPageLabel)}
-                <select id="conversations-page-size-pagination" onchange="changeConversationsPageSize()">
+                <select id="conversations-page-size-pagination">
                     <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
                     <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
                     <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
                 </select>
             </label>
         </div>`;
+    } finally {
+        conversationsPaginationRenderLock = false;
+    }
 }
 
 function goConversationsPage(page) {
     const requestedPage = Math.max(1, parseInt(page, 10) || 1);
     const scrollToTop = requestedPage !== conversationsPagination.page;
-    conversationsListNavigateGen += 1;
-    conversationsPagination.page = requestedPage;
-    // intentPage：用户主动翻页，不在此处用可能已被并发刷新污染的 total 做钳制
+    commitConversationsPage(requestedPage, { bumpNavigateGen: true });
     loadConversationsWithGroups(conversationsSearchQuery, {
         refreshMeta: false,
         scrollToTop,
@@ -6681,7 +6703,7 @@ function changeConversationsPageSize() {
         localStorage.setItem(CONVERSATIONS_PAGE_SIZE_KEY, String(newSize));
     } catch (e) { /* ignore */ }
     conversationsPagination.pageSize = newSize;
-    conversationsPagination.page = 1;
+    commitConversationsPage(1, { bumpNavigateGen: true });
     loadConversationsWithGroups(conversationsSearchQuery);
 }
 
@@ -6791,9 +6813,6 @@ async function loadConversationsWithGroups(searchQuery = '', options = {}) {
         const pageSize = getConversationsPageSize();
         conversationsPagination.pageSize = pageSize;
         const activePage = intentPage != null ? intentPage : conversationsPagination.page;
-        if (intentPage != null) {
-            conversationsPagination.page = intentPage;
-        }
         const offset = (activePage - 1) * pageSize;
         const convParams = new URLSearchParams({ limit: String(pageSize), offset: String(offset) });
         if (conversationSortBy === 'created_at') {
@@ -6816,7 +6835,7 @@ async function loadConversationsWithGroups(searchQuery = '', options = {}) {
         }
         const results = await Promise.all(fetchTasks);
         const response = results[results.length - 1];
-        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
 
         const listContainer = document.getElementById('conversations-list');
         if (!listContainer) {
@@ -6839,10 +6858,10 @@ async function loadConversationsWithGroups(searchQuery = '', options = {}) {
         }
 
         const data = await response.json();
-        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
         const parsed = parseConversationsListResponse(data);
         const resolvedTotal = await resolveConversationsListTotal(convParams, parsed, pageSize, offset);
-        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
         conversationsPagination.total = resolvedTotal;
 
         const pageCheck = reconcileConversationsPageAfterTotal(
@@ -6850,17 +6869,20 @@ async function loadConversationsWithGroups(searchQuery = '', options = {}) {
         );
         conversationsPagination.total = pageCheck.total;
         if (!pageCheck.ok) {
-            if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+            if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
+            // 用户主动翻页被钳制时仍保留 intent，并 bump navigateGen 使在途后台刷新失效
+            if (intentPage != null) {
+                commitConversationsPage(pageCheck.clampedPage, { bumpNavigateGen: true });
+            }
             loadConversationsWithGroups(searchQuery, {
                 ...options,
-                intentPage: null,
+                intentPage: pageCheck.clampedPage,
                 scrollToTop: options.scrollToTop === true || activePage !== pageCheck.clampedPage,
             });
             return;
         }
-        commitConversationsListPage(activePage, intentPage);
         if (intentPage == null && clampConversationsPageToTotal()) {
-            if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+            if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
             loadConversationsWithGroups(searchQuery, options);
             return;
         }
@@ -7007,7 +7029,7 @@ async function loadConversationsWithGroups(searchQuery = '', options = {}) {
             return;
         }
 
-        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
         listContainer.appendChild(fragment);
         updateActiveConversation();
         renderConversationsPagination(visibleCount);
@@ -7015,13 +7037,13 @@ async function loadConversationsWithGroups(searchQuery = '', options = {}) {
         // 翻页时回到列表顶部；后台刷新保留滚动位置
         if (sidebarContent) {
             requestAnimationFrame(() => {
-                if (!isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) {
+                if (!isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) {
                     sidebarContent.scrollTop = scrollToTop ? 0 : savedScrollTop;
                 }
             });
         }
     } catch (error) {
-        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart)) return;
+        if (isStaleConversationListLoad(loadSeq, intentPage, navigateGenAtStart, activePage)) return;
         console.error('加载对话列表失败:', error);
         // 错误时显示空状态，而不是错误提示（更友好的用户体验）
         const listContainer = document.getElementById('conversations-list');
