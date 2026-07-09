@@ -2463,6 +2463,7 @@ function syncProcessDetailButtonLabels(messageId, expanded) {
 function renderProcessDetails(messageId, processDetails, options) {
     const renderOpts = options || {};
     const appendMode = !!renderOpts.append;
+    const prependMode = !!renderOpts.prepend;
     const markLoaded = renderOpts.markLoaded !== false;
     const messageElement = document.getElementById(messageId);
     if (!messageElement) {
@@ -2546,13 +2547,21 @@ function renderProcessDetails(messageId, processDetails, options) {
     processDetails = mergeMessageReasoningContentIntoProcessDetails(processDetails, reasoningFromMessage);
     processDetails = filterNoiseProcessDetails(processDetails);
     processDetails = dedupeConsecutiveProcessDetailRows(processDetails);
+    const renderedMcpIds = collectMcpExecutionIdsFromProcessDetails(processDetails);
+    if (renderedMcpIds.length > 0) {
+        setPendingMcpExecutionIds(messageElement, renderedMcpIds);
+    }
+    const renderedToolCount = processDetails.filter((d) => d && d.eventType === 'tool_call').length;
+    if (renderedToolCount > 0) {
+        setMcpExecutionSummaryCount(messageElement, renderedToolCount);
+    }
     if (typeof window.coalesceProcessDetailsToolPairs === 'function') {
         processDetails = window.coalesceProcessDetailsToolPairs(processDetails);
     }
     processDetails = compactWorkflowProcessDetails(processDetails);
     // 如果没有processDetails或为空，显示空状态
     if (!processDetails || processDetails.length === 0) {
-        if (!appendMode) {
+        if (!appendMode && !prependMode) {
             timeline.innerHTML = '<div class="progress-timeline-empty">' + (typeof window.t === 'function' ? window.t('chat.noProcessDetail') : '暂无过程详情（可能执行过快或未触发详细事件）') + '</div>';
             if (!isProcessDetailsUserExpanded(messageId)) {
                 timeline.classList.remove('expanded');
@@ -2561,7 +2570,13 @@ function renderProcessDetails(messageId, processDetails, options) {
         return;
     }
     
-    if (!appendMode) {
+    const prependAnchor = prependMode ? timeline.firstChild : null;
+    const prependScrollBox = prependMode ? document.getElementById('chat-messages') : null;
+    const prependScrollHeight = prependScrollBox ? prependScrollBox.scrollHeight : 0;
+    const prependScrollTop = prependScrollBox ? prependScrollBox.scrollTop : 0;
+    const prependedIds = [];
+
+    if (!appendMode && !prependMode) {
         timeline.innerHTML = '';
     }
     
@@ -2713,7 +2728,24 @@ function renderProcessDetails(messageId, processDetails, options) {
         if (eventType === 'tool_call' && data._mergedResult) {
             timelineOpts.mergedResult = data._mergedResult;
         }
-        addTimelineItem(timeline, eventType, timelineOpts);
+        const itemId = addTimelineItem(timeline, eventType, timelineOpts);
+        if (prependMode && itemId) {
+            prependedIds.push(itemId);
+        }
+    }
+
+    function finishPrependRender() {
+        if (!prependMode || prependedIds.length === 0) return;
+        const fragment = document.createDocumentFragment();
+        prependedIds.forEach((id) => {
+            const node = document.getElementById(id);
+            if (node) fragment.appendChild(node);
+        });
+        timeline.insertBefore(fragment, prependAnchor || timeline.firstChild);
+        if (prependScrollBox) {
+            const delta = prependScrollBox.scrollHeight - prependScrollHeight;
+            prependScrollBox.scrollTop = prependScrollTop + delta;
+        }
     }
 
     const TIMELINE_RENDER_BATCH = 40;
@@ -2725,13 +2757,17 @@ function renderProcessDetails(messageId, processDetails, options) {
         if (endIdx < processDetails.length) {
             requestAnimationFrame(() => renderTimelineBatch(endIdx));
         } else if (markLoaded) {
+            finishPrependRender();
             finishProcessDetailsRender(messageElement, processDetails, isLazyNotLoaded, timeline);
+        } else {
+            finishPrependRender();
         }
     };
     if (processDetails.length > TIMELINE_RENDER_BATCH) {
         renderTimelineBatch(0);
     } else {
         processDetails.forEach(renderOneProcessDetail);
+        finishPrependRender();
         if (markLoaded) {
             finishProcessDetailsRender(messageElement, processDetails, isLazyNotLoaded, timeline);
         }
@@ -2781,6 +2817,18 @@ function prefetchProcessDetailsSummaryHint(messageId, messageElement) {
             const j = await res.json().catch(() => ({}));
             if (!res.ok || !j.summary) return;
             const s = j.summary;
+            const toolCount = parseInt(s.toolCount, 10) || 0;
+            const summaryMcpIds = Array.isArray(s.mcpExecutionIds) ? s.mcpExecutionIds : [];
+            const summaryTools = Array.isArray(s.toolExecutions) ? s.toolExecutions : [];
+            if (summaryTools.length > 0) {
+                setPendingToolExecutionSummaries(messageElement, summaryTools);
+            }
+            if (summaryMcpIds.length > 0) {
+                setPendingMcpExecutionIds(messageElement, summaryMcpIds);
+            }
+            if (toolCount > 0) {
+                setMcpExecutionSummaryCount(messageElement, toolCount);
+            }
             const timeline = detailsContainer.querySelector('.progress-timeline');
             if (!timeline || detailsContainer.dataset.loaded === '1') return;
             const expandLabel = typeof window.t === 'function' ? window.t('chat.expandDetail') : '展开详情';
@@ -2871,14 +2919,112 @@ function getPendingMcpExecutionCount(messageElement) {
     }
 }
 
+function getPendingToolExecutionSummaryCount(messageElement) {
+    if (!messageElement || !messageElement.dataset || !messageElement.dataset.pendingToolExecutionSummaries) {
+        return 0;
+    }
+    try {
+        const tools = JSON.parse(messageElement.dataset.pendingToolExecutionSummaries);
+        return Array.isArray(tools) ? tools.length : 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
 function getMcpExecutionCount(messageElement) {
     const pending = getPendingMcpExecutionCount(messageElement);
     if (pending > 0) return pending;
+    const pendingSummaries = getPendingToolExecutionSummaryCount(messageElement);
+    if (pendingSummaries > 0) return pendingSummaries;
     const toolList = messageElement && messageElement.querySelector('.mcp-tool-list');
     if (toolList) {
-        return toolList.querySelectorAll('.mcp-detail-btn[data-exec-id]').length;
+        const rendered = toolList.querySelectorAll('.mcp-detail-btn[data-exec-id], .mcp-detail-btn[data-tool-summary]').length;
+        if (rendered > 0) return rendered;
+    }
+    if (messageElement && messageElement.dataset && messageElement.dataset.mcpExecutionCount) {
+        const summaryCount = parseInt(messageElement.dataset.mcpExecutionCount, 10) || 0;
+        if (summaryCount > 0) return summaryCount;
     }
     return 0;
+}
+
+function collectMcpExecutionIdsFromProcessDetails(processDetails) {
+    if (!Array.isArray(processDetails)) return [];
+    const seen = new Set();
+    const ids = [];
+    const add = (value) => {
+        const id = value == null ? '' : String(value).trim();
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        ids.push(id);
+    };
+    processDetails.forEach((detail) => {
+        const data = detail && detail.data && typeof detail.data === 'object' ? detail.data : null;
+        if (!data) return;
+        add(data.executionId);
+        const merged = data._mergedResult && typeof data._mergedResult === 'object' ? data._mergedResult : null;
+        if (merged) add(merged.executionId);
+    });
+    return ids;
+}
+
+function setPendingMcpExecutionIds(messageElement, executionIds) {
+    if (!messageElement || !messageElement.dataset || !Array.isArray(executionIds)) return;
+    const seen = new Set();
+    const ids = [];
+    executionIds.forEach((value) => {
+        const id = value == null ? '' : String(value).trim();
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        ids.push(id);
+    });
+    if (ids.length > 0) {
+        messageElement.dataset.pendingMcpExecutionIds = JSON.stringify(ids);
+    } else {
+        delete messageElement.dataset.pendingMcpExecutionIds;
+    }
+    if (typeof syncMcpToolsToggleButton === 'function') {
+        syncMcpToolsToggleButton(messageElement);
+    }
+}
+
+function normalizeToolExecutionSummaryForButton(raw) {
+    const data = raw && typeof raw === 'object' ? raw : {};
+    return {
+        toolName: data.toolName || data.name || '',
+        status: data.status || '',
+        executionId: data.executionId || '',
+        toolCallId: data.toolCallId || '',
+        processDetailId: data.processDetailId || ''
+    };
+}
+
+function setPendingToolExecutionSummaries(messageElement, summaries) {
+    if (!messageElement || !messageElement.dataset || !Array.isArray(summaries)) return;
+    const normalized = summaries
+        .map(normalizeToolExecutionSummaryForButton)
+        .filter((item) => item.toolName || item.executionId || item.toolCallId);
+    if (normalized.length > 0) {
+        messageElement.dataset.pendingToolExecutionSummaries = JSON.stringify(normalized);
+    } else {
+        delete messageElement.dataset.pendingToolExecutionSummaries;
+    }
+    if (typeof syncMcpToolsToggleButton === 'function') {
+        syncMcpToolsToggleButton(messageElement);
+    }
+}
+
+function setMcpExecutionSummaryCount(messageElement, count) {
+    if (!messageElement || !messageElement.dataset) return;
+    const n = parseInt(count, 10) || 0;
+    if (n > 0) {
+        messageElement.dataset.mcpExecutionCount = String(n);
+    } else {
+        delete messageElement.dataset.mcpExecutionCount;
+    }
+    if (typeof syncMcpToolsToggleButton === 'function') {
+        syncMcpToolsToggleButton(messageElement);
+    }
 }
 
 function formatMcpToolsToggleLabel(count, expanded) {
@@ -2986,12 +3132,92 @@ function syncMcpToolsToggleButton(messageElement) {
     toolsToggle.innerHTML = '<span>' + formatMcpToolsToggleLabel(count, expanded) + '</span>';
 }
 
+function cssEscapeValue(value) {
+    const s = String(value || '');
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+        return CSS.escape(s);
+    }
+    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+async function ensureProcessDetailsForToolFocus(messageElement, anchorId) {
+    if (!messageElement || !messageElement.id) return null;
+    const detailsId = 'process-details-' + messageElement.id;
+    let detailsContainer = document.getElementById(detailsId);
+    const backendId = messageElement.dataset ? String(messageElement.dataset.backendMessageId || '').trim() : '';
+    if (detailsContainer && detailsContainer.dataset && detailsContainer.dataset.lazyNotLoaded === '1' && backendId && typeof window.loadProcessDetailsPaginated === 'function') {
+        await window.loadProcessDetailsPaginated(messageElement.id, backendId, { autoLoadAll: false, anchorId: anchorId || '' });
+        detailsContainer = document.getElementById(detailsId);
+    } else if (!detailsContainer && backendId && typeof renderProcessDetails === 'function') {
+        renderProcessDetails(messageElement.id, null);
+        detailsContainer = document.getElementById(detailsId);
+        if (detailsContainer && typeof window.loadProcessDetailsPaginated === 'function') {
+            await window.loadProcessDetailsPaginated(messageElement.id, backendId, { autoLoadAll: false, anchorId: anchorId || '' });
+            detailsContainer = document.getElementById(detailsId);
+        }
+    }
+    if (typeof window.expandProcessDetailsTimeline === 'function') {
+        window.expandProcessDetailsTimeline(messageElement.id);
+    } else if (typeof toggleProcessDetails === 'function') {
+        const timeline = detailsContainer && detailsContainer.querySelector('.progress-timeline');
+        if (!timeline || !timeline.classList.contains('expanded')) {
+            toggleProcessDetails(null, messageElement.id);
+        }
+    }
+    return document.getElementById(detailsId);
+}
+
+async function focusToolExecutionInProcessDetails(messageElement, summary, index) {
+    const item = normalizeToolExecutionSummaryForButton(summary);
+    let detailsContainer = await ensureProcessDetailsForToolFocus(messageElement, item.processDetailId || '');
+    let timeline = detailsContainer && detailsContainer.querySelector('.progress-timeline');
+    if (!timeline) return;
+    let target = null;
+    if (item.processDetailId) {
+        target = timeline.querySelector('[data-process-detail-id="' + cssEscapeValue(item.processDetailId) + '"]');
+    }
+    if (!target && item.toolCallId) {
+        target = timeline.querySelector('[data-tool-call-id="' + cssEscapeValue(item.toolCallId) + '"]');
+    }
+    if (!target) {
+        const toolItems = timeline.querySelectorAll('.timeline-item-tool_call');
+        target = toolItems[index] || null;
+    }
+    if (!target && item.processDetailId && messageElement.dataset && messageElement.dataset.backendMessageId && typeof window.loadProcessDetailsPaginated === 'function') {
+        await window.loadProcessDetailsPaginated(messageElement.id, messageElement.dataset.backendMessageId, {
+            autoLoadAll: false,
+            anchorId: item.processDetailId
+        });
+        detailsContainer = document.getElementById('process-details-' + messageElement.id);
+        timeline = detailsContainer && detailsContainer.querySelector('.progress-timeline');
+        target = timeline ? timeline.querySelector('[data-process-detail-id="' + cssEscapeValue(item.processDetailId) + '"]') : null;
+    }
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.remove('timeline-item-focus-pulse');
+    void target.offsetWidth;
+    target.classList.add('timeline-item-focus-pulse');
+    setTimeout(() => {
+        target.classList.remove('timeline-item-focus-pulse');
+    }, 2200);
+}
+
 function toggleMcpToolList(assistantMessageId) {
     const messageEl = document.getElementById(assistantMessageId);
     if (!messageEl) return;
     const chrome = ensureMcpCallSectionChrome(messageEl, assistantMessageId);
     if (!chrome) return;
     const { toolList } = chrome;
+    if (
+        !getPendingMcpExecutionCount(messageEl) &&
+        !getPendingToolExecutionSummaryCount(messageEl) &&
+        !toolList.querySelector('.mcp-detail-btn[data-exec-id], .mcp-detail-btn[data-tool-summary]')
+    ) {
+        if (typeof toggleProcessDetails === 'function') {
+            toggleProcessDetails(null, assistantMessageId);
+        }
+        return;
+    }
     const willExpand = !toolList.classList.contains('expanded');
     if (willExpand) {
         ensureMcpCallButtons(messageEl);
@@ -3007,6 +3233,9 @@ window.syncMcpToolsToggleButton = syncMcpToolsToggleButton;
 window.isProcessDetailsUserExpanded = isProcessDetailsUserExpanded;
 window.syncProcessDetailButtonLabels = syncProcessDetailButtonLabels;
 window.ensureMcpCallSectionChrome = ensureMcpCallSectionChrome;
+window.setMcpExecutionSummaryCount = setMcpExecutionSummaryCount;
+window.setPendingMcpExecutionIds = setPendingMcpExecutionIds;
+window.setPendingToolExecutionSummaries = setPendingToolExecutionSummaries;
 
 /** 将 MCP 工具按钮挂到独立工具列表，并批量解析工具名 */
 function appendMcpCallButtons(messageElement, executionIds) {
@@ -3033,28 +3262,85 @@ function appendMcpCallButtons(messageElement, executionIds) {
     syncMcpToolsToggleButton(messageElement);
 }
 
+function appendMcpCallSummaryButtons(messageElement, summaries) {
+    if (!messageElement || !Array.isArray(summaries) || summaries.length === 0) {
+        return;
+    }
+    const chrome = ensureMcpCallSectionChrome(messageElement, messageElement.id);
+    if (!chrome) return;
+    const toolList = chrome.toolList;
+    summaries.forEach((raw, index) => {
+        const item = normalizeToolExecutionSummaryForButton(raw);
+        const key = item.executionId || item.toolCallId || `${item.toolName || 'tool'}-${index + 1}`;
+        const selector = '.mcp-detail-btn[data-tool-summary="' + CSS.escape(String(key)) + '"]';
+        if (toolList.querySelector(selector) || (item.executionId && toolList.querySelector('.mcp-detail-btn[data-exec-id="' + CSS.escape(String(item.executionId)) + '"]'))) {
+            return;
+        }
+        const btn = document.createElement('button');
+        btn.className = 'mcp-detail-btn';
+        btn.dataset.toolSummary = key;
+        if (item.executionId) {
+            btn.dataset.execId = item.executionId;
+        }
+        if (item.processDetailId || item.toolCallId) {
+            btn.onclick = async () => {
+                await focusToolExecutionInProcessDetails(messageElement, item, index);
+            };
+        } else if (item.executionId) {
+            btn.onclick = () => showMCPDetail(item.executionId);
+        } else {
+            btn.onclick = async () => {
+                await focusToolExecutionInProcessDetails(messageElement, item, index);
+            };
+        }
+        renderToolExecutionButtonContent(btn, item.toolName || (typeof window.t === 'function' ? window.t('chat.unknownTool') : '未知工具'), String(index + 1), item.status);
+        toolList.appendChild(btn);
+    });
+    syncMcpToolsToggleButton(messageElement);
+}
+
 /** 历史会话懒加载：用户展开工具列表时再渲染工具按钮 */
 function ensureMcpCallButtons(messageElement) {
-    if (!messageElement || !messageElement.dataset || !messageElement.dataset.pendingMcpExecutionIds) {
+    if (!messageElement || !messageElement.dataset) {
         return;
     }
-    let executionIds;
-    try {
-        executionIds = JSON.parse(messageElement.dataset.pendingMcpExecutionIds);
-    } catch (e) {
+    let renderedSummaryExecutions = false;
+    if (messageElement.dataset.pendingToolExecutionSummaries) {
+        let summaries;
+        try {
+            summaries = JSON.parse(messageElement.dataset.pendingToolExecutionSummaries);
+        } catch (e) {
+            delete messageElement.dataset.pendingToolExecutionSummaries;
+            summaries = [];
+        }
+        if (Array.isArray(summaries) && summaries.length > 0) {
+            appendMcpCallSummaryButtons(messageElement, summaries);
+            renderedSummaryExecutions = true;
+        }
+        delete messageElement.dataset.pendingToolExecutionSummaries;
+    }
+    if (renderedSummaryExecutions) {
         delete messageElement.dataset.pendingMcpExecutionIds;
         return;
     }
-    if (!Array.isArray(executionIds) || executionIds.length === 0) {
+    if (messageElement.dataset.pendingMcpExecutionIds) {
+        let executionIds;
+        try {
+            executionIds = JSON.parse(messageElement.dataset.pendingMcpExecutionIds);
+        } catch (e) {
+            delete messageElement.dataset.pendingMcpExecutionIds;
+            executionIds = [];
+        }
+        if (Array.isArray(executionIds) && executionIds.length > 0) {
+            appendMcpCallButtons(messageElement, executionIds);
+        }
         delete messageElement.dataset.pendingMcpExecutionIds;
-        return;
     }
-    appendMcpCallButtons(messageElement, executionIds);
-    delete messageElement.dataset.pendingMcpExecutionIds;
 }
 
 window.ensureMcpCallButtons = ensureMcpCallButtons;
 window.appendMcpCallButtons = appendMcpCallButtons;
+window.appendMcpCallSummaryButtons = appendMcpCallSummaryButtons;
 
 function normalizeToolExecutionSummary(raw) {
     if (typeof raw === 'string') {

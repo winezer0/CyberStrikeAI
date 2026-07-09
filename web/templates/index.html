@@ -2677,7 +2677,7 @@
                 </div>
 
                 <!-- Skills状态监控页面 -->
-                <div id="page-skills-monitor" class="page">
+                <div id="page-skills-monitor" class="page skills-monitor-page">
                     <div class="page-header">
                         <h2 data-i18n="skills.monitorTitle">Skills状态监控</h2>
                         <div class="page-header-actions">
@@ -2710,7 +2710,7 @@
                 </div>
 
                 <!-- Skills管理页面 -->
-                <div id="page-skills-management" class="page">
+                <div id="page-skills-management" class="page skills-management-page">
                     <div class="page-header">
                         <h2 data-i18n="skills.title">Skills管理</h2>
                         <div class="page-header-actions">
@@ -2719,6 +2719,24 @@
                         </div>
                     </div>
                     <div class="page-content page-content-with-pagination">
+                        <div class="skills-overview" id="skills-management-stats">
+                            <div class="skills-overview-card skills-overview-card-primary">
+                                <span class="skills-overview-label" data-i18n="skillsPage.overviewTotal">Skills</span>
+                                <strong class="skill-stat-value">0</strong>
+                            </div>
+                            <div class="skills-overview-card">
+                                <span class="skills-overview-label" data-i18n="skillsPage.overviewCurrent">当前页</span>
+                                <strong id="skills-current-count">0</strong>
+                            </div>
+                            <div class="skills-overview-card">
+                                <span class="skills-overview-label" data-i18n="skillsPage.overviewFiles">文件</span>
+                                <strong id="skills-file-count">0</strong>
+                            </div>
+                            <div class="skills-overview-card">
+                                <span class="skills-overview-label" data-i18n="skillsPage.overviewScripts">脚本</span>
+                                <strong id="skills-script-count">0</strong>
+                            </div>
+                        </div>
                         <div class="skills-controls">
                             <div class="skills-search-box">
                                 <input type="text" id="skills-search" data-i18n="skillsPage.searchPlaceholder" data-i18n-attr="placeholder" placeholder="搜索Skills..." oninput="handleSkillsSearchInput()" onkeydown="if(event.key==='Enter') searchSkills()" />

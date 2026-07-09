@@ -1376,27 +1376,71 @@ function getProcessDetailsLoadMoreLabel(hasMore) {
 }
 
 function updateProcessDetailsLoadMoreButton(assistantMessageId, backendMessageId, hasMore) {
+    updateProcessDetailsPaginationButtons(assistantMessageId, backendMessageId, {
+        hasPrev: false,
+        hasNext: hasMore
+    });
+}
+
+function updateProcessDetailsPaginationButtons(assistantMessageId, backendMessageId, pageState) {
     const detailsContainer = document.getElementById('process-details-' + assistantMessageId);
     if (!detailsContainer) return;
+    const state = pageState || {};
 
-    let btn = detailsContainer.querySelector('.process-details-load-more-btn');
-    if (!hasMore) {
-        if (btn) btn.remove();
+    let prevBtn = detailsContainer.querySelector('.process-details-load-prev-btn');
+    if (!state.hasPrev) {
+        if (prevBtn) prevBtn.remove();
+    } else {
+        if (!prevBtn) {
+            prevBtn = document.createElement('button');
+            prevBtn.type = 'button';
+            prevBtn.className = 'mcp-detail-btn process-details-load-prev-btn';
+            const content = detailsContainer.querySelector('.process-details-content');
+            if (content) {
+                detailsContainer.insertBefore(prevBtn, content);
+            } else {
+                detailsContainer.prepend(prevBtn);
+            }
+        }
+        const loadMoreText = typeof window.t === 'function' ? window.t('common.loadMore') : '加载更多';
+        let prevPageText = typeof window.t === 'function' ? window.t('chat.previousPage') : '上一页';
+        if (!prevPageText || prevPageText === 'chat.previousPage') prevPageText = '上一页';
+        prevBtn.textContent = loadMoreText + ' · ' + prevPageText;
+        prevBtn.disabled = false;
+        prevBtn.onclick = async () => {
+            if (detailsContainer.dataset.loadingPrev === '1') return;
+            detailsContainer.dataset.loadingPrev = '1';
+            prevBtn.disabled = true;
+            prevBtn.textContent = typeof window.t === 'function' ? window.t('common.loading') : '加载中…';
+            try {
+                await loadProcessDetailsPaginated(assistantMessageId, backendMessageId, {
+                    prepend: true,
+                    autoLoadAll: false
+                });
+            } finally {
+                detailsContainer.dataset.loadingPrev = '0';
+            }
+        };
+    }
+
+    let nextBtn = detailsContainer.querySelector('.process-details-load-more-btn');
+    if (!state.hasNext) {
+        if (nextBtn) nextBtn.remove();
         return;
     }
-    if (!btn) {
-        btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'mcp-detail-btn process-details-load-more-btn';
-        detailsContainer.appendChild(btn);
+    if (!nextBtn) {
+        nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'mcp-detail-btn process-details-load-more-btn';
+        detailsContainer.appendChild(nextBtn);
     }
-    btn.textContent = getProcessDetailsLoadMoreLabel(true);
-    btn.disabled = false;
-    btn.onclick = async () => {
+    nextBtn.textContent = getProcessDetailsLoadMoreLabel(true);
+    nextBtn.disabled = false;
+    nextBtn.onclick = async () => {
         if (detailsContainer.dataset.loadingMore === '1') return;
         detailsContainer.dataset.loadingMore = '1';
-        btn.disabled = true;
-        btn.textContent = typeof window.t === 'function' ? window.t('common.loading') : '加载中…';
+        nextBtn.disabled = true;
+        nextBtn.textContent = typeof window.t === 'function' ? window.t('common.loading') : '加载中…';
         try {
             await loadProcessDetailsPaginated(assistantMessageId, backendMessageId, {
                 append: true,
@@ -1420,14 +1464,28 @@ async function loadProcessDetailsPaginated(assistantMessageId, backendMessageId,
     const autoLoadAll = opts.autoLoadAll !== false;
     const detailsContainer = document.getElementById('process-details-' + assistantMessageId);
     const PAGE = PROCESS_DETAILS_PAGE_SIZE;
-    let offset = opts.append && detailsContainer && detailsContainer.dataset.nextOffset
+    const existingNextOffset = detailsContainer && detailsContainer.dataset.nextOffset
         ? parseInt(detailsContainer.dataset.nextOffset, 10) || 0
         : 0;
+    const prepend = !!opts.prepend;
+    let offset = prepend && detailsContainer && detailsContainer.dataset.prevOffset
+        ? parseInt(detailsContainer.dataset.prevOffset, 10) || 0
+        : opts.append && detailsContainer && detailsContainer.dataset.nextOffset
+        ? parseInt(detailsContainer.dataset.nextOffset, 10) || 0
+        : 0;
+    const anchorId = opts.anchorId != null ? String(opts.anchorId).trim() : '';
     let isFirst = !opts.append;
     while (true) {
+        const params = new URLSearchParams();
+        params.set('limit', String(PAGE));
+        if (anchorId && !opts.append && !prepend) {
+            params.set('anchorId', anchorId);
+        } else {
+            params.set('offset', String(offset));
+        }
         const res = await apiFetch(
             '/api/messages/' + encodeURIComponent(String(backendMessageId)) +
-            '/process-details?limit=' + PAGE + '&offset=' + offset
+            '/process-details?' + params.toString()
         );
         const j = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -1436,16 +1494,27 @@ async function loadProcessDetailsPaginated(assistantMessageId, backendMessageId,
         const details = (j && Array.isArray(j.processDetails)) ? j.processDetails : [];
         const hasMore = !!(j && j.hasMore);
         renderProcessDetails(assistantMessageId, details, {
-            append: !isFirst,
+            append: !isFirst || opts.append,
+            prepend: prepend,
             markLoaded: autoLoadAll ? !hasMore : true
         });
-        offset += details.length;
+        const responseOffset = j && typeof j.offset === 'number' ? j.offset : offset;
+        const total = j && typeof j.total === 'number' ? j.total : responseOffset + details.length;
+        const nextOffset = prepend && existingNextOffset > 0
+            ? existingNextOffset
+            : responseOffset + details.length;
+        const prevOffset = Math.max(0, responseOffset - PAGE);
+        offset = nextOffset;
         if (detailsContainer) {
             detailsContainer.dataset.lazyNotLoaded = '0';
             detailsContainer.dataset.loaded = hasMore ? 'partial' : '1';
-            detailsContainer.dataset.nextOffset = String(offset);
+            detailsContainer.dataset.prevOffset = String(prevOffset);
+            detailsContainer.dataset.nextOffset = String(nextOffset);
         }
-        updateProcessDetailsLoadMoreButton(assistantMessageId, backendMessageId, hasMore && !autoLoadAll);
+        updateProcessDetailsPaginationButtons(assistantMessageId, backendMessageId, {
+            hasPrev: !autoLoadAll && responseOffset > 0,
+            hasNext: !autoLoadAll && nextOffset < total
+        });
         if (!hasMore || details.length === 0 || !autoLoadAll) {
             break;
         }
