@@ -446,6 +446,7 @@
     "noFactsForVulnerability": "该漏洞暂无关联事实，可在事实详情中「关联漏洞」或「生成漏洞草稿」建立链接",
     "promptChooseFactByIndex": "该漏洞关联 {{count}} 条事实，输入序号查看：\n{{lines}}",
     "enterProjectName": "请输入项目名称",
+    "writePermissionDenied": "当前账号仅有只读权限，无法创建或修改项目",
     "saveFailed": "保存失败",
     "invalidJson": "JSON 格式无效",
     "scopeNoteAuthorizedWebOnly": "仅授权 Web 应用层测试",
@@ -1405,6 +1406,8 @@
   "auth": {
     "sessionExpired": "认证已过期，请重新登录",
     "unauthorized": "未授权访问",
+    "forbidden": "权限不足",
+    "requestFailed": "请求失败",
     "enterPassword": "请输入密码",
     "loginFailedCheck": "登录失败，请检查用户名或密码",
     "loginFailedRetry": "登录失败，请稍后重试",

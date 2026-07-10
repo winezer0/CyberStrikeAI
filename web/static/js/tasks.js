@@ -988,6 +988,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 创建批量任务队列
 async function createBatchQueue() {
+    if (typeof requirePermission === 'function' && !requirePermission('tasks:write')) return;
     const input = document.getElementById('batch-tasks-input');
     const titleInput = document.getElementById('batch-queue-title');
     const roleSelect = document.getElementById('batch-queue-role');
@@ -2250,6 +2251,7 @@ async function saveInlineTask(queueId, taskId) {
 
 // 显示添加批量任务模态框
 function showAddBatchTaskModal() {
+    if (typeof requirePermission === 'function' && !requirePermission('tasks:write')) return;
     const queueId = batchQueuesState.currentQueueId;
     if (!queueId) {
         alert(_t('tasks.queueInfoMissing'));

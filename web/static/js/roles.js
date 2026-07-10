@@ -1279,6 +1279,7 @@ function setSelectedRoleTools(selectedToolKeys) {
 
 // 显示添加角色模态框
 async function showAddRoleModal() {
+    if (typeof requirePermission === 'function' && !requirePermission('roles:write')) return;
     const modal = document.getElementById('role-modal');
     if (!modal) return;
 
@@ -1627,6 +1628,7 @@ async function loadAllToolsToStateMap() {
 
 // 保存角色
 async function saveRole() {
+    if (typeof requirePermission === 'function' && !requirePermission('roles:write')) return;
     const name = document.getElementById('role-name').value.trim();
     if (!name) {
         showNotification(_t('roleModal.roleNameRequired'), 'error');

@@ -647,7 +647,7 @@
                     </svg>
                     <h3 style="margin-bottom:8px;font-size:18px;font-weight:700;">${escapeHtml(c2t('c2.listeners.emptyTitle'))}</h3>
                     <p style="font-size:14px;">${escapeHtml(c2t('c2.listeners.emptyHint'))}</p>
-                    <button class="btn-primary" onclick="C2.showCreateListenerModal()" style="margin-top:20px;">
+                    <button class="btn-primary" data-require-permission="c2:write" onclick="C2.showCreateListenerModal()" style="margin-top:20px;">
                         ${escapeHtml(c2t('c2.listeners.headerCreateBtn'))}
                     </button>
                 </div>`;
@@ -700,14 +700,15 @@
                 </div>
                 <div class="c2-listener-card-actions">
                     ${l.status === 'stopped'
-                        ? `<button type="button" class="btn-primary btn-sm" onclick="C2.startListener('${l.id}')">▶ ${escapeHtml(c2t('c2.listeners.start'))}</button>`
-                        : `<button type="button" class="btn-secondary btn-sm" onclick="C2.stopListener('${l.id}')">⏹ ${escapeHtml(c2t('c2.listeners.stop'))}</button>`
+                        ? `<button type="button" class="btn-primary btn-sm" data-require-permission="c2:write" onclick="C2.startListener('${l.id}')">▶ ${escapeHtml(c2t('c2.listeners.start'))}</button>`
+                        : `<button type="button" class="btn-secondary btn-sm" data-require-permission="c2:write" onclick="C2.stopListener('${l.id}')">⏹ ${escapeHtml(c2t('c2.listeners.stop'))}</button>`
                     }
-                    <button type="button" class="btn-secondary btn-sm" onclick="C2.editListener('${l.id}')">${escapeHtml(c2t('c2.listeners.edit'))}</button>
-                    <button type="button" class="btn-danger btn-sm" onclick="C2.deleteListener('${l.id}')">${escapeHtml(c2t('c2.listeners.delete'))}</button>
+                    <button type="button" class="btn-secondary btn-sm" data-require-permission="c2:write" onclick="C2.editListener('${l.id}')">${escapeHtml(c2t('c2.listeners.edit'))}</button>
+                    <button type="button" class="btn-danger btn-sm" data-require-permission="c2:delete" onclick="C2.deleteListener('${l.id}')">${escapeHtml(c2t('c2.listeners.delete'))}</button>
                 </div>
             </article>`;
         }).join('');
+        if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(container);
     };
 
     C2.getListenerCallbackHost = function(l) {
@@ -1212,7 +1213,7 @@
                     </div>
                     <div class="c2-session-item-footer">
                         <span class="c2-session-meta c2-session-item-time" title="${escapeHtml(formatTime(s.lastCheckIn))}">${escapeHtml(formatRelativeTime(s.lastCheckIn) || formatTime(s.lastCheckIn))}</span>
-                        <button type="button" class="c2-session-card-delete" onclick="event.stopPropagation(); C2.deleteSessionRecord('${s.id}');">${escapeHtml(c2t('c2.sessions.cardDeleteSession'))}</button>
+                        <button type="button" class="c2-session-card-delete" data-require-permission="c2:delete" onclick="event.stopPropagation(); C2.deleteSessionRecord('${s.id}');">${escapeHtml(c2t('c2.sessions.cardDeleteSession'))}</button>
                     </div>
                 </div>
             </div>
@@ -1225,6 +1226,7 @@
             C2.selectSession(C2.sessions[0].id);
         }
         C2.syncSessionsToolbar();
+        if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(list);
     };
 
     C2.selectSession = function(id) {
@@ -1280,8 +1282,8 @@
                             <span class="c2-session-hero__heartbeat-value">${escapeHtml(heartbeatRel)}</span>
                         </div>
                         <div class="c2-session-actions">
-                            <button class="btn-secondary btn-sm" onclick="C2.setSessionSleep('${s.id}')">${escapeHtml(c2t('c2.sessions.btnSleep'))}</button>
-                            <button class="btn-danger btn-sm" onclick="C2.killSession('${s.id}')">${escapeHtml(c2t('c2.sessions.kill'))}</button>
+                            <button class="btn-secondary btn-sm" data-require-permission="c2:write" onclick="C2.setSessionSleep('${s.id}')">${escapeHtml(c2t('c2.sessions.btnSleep'))}</button>
+                            <button class="btn-danger btn-sm" data-require-permission="c2:write" onclick="C2.killSession('${s.id}')">${escapeHtml(c2t('c2.sessions.kill'))}</button>
                         </div>
                     </div>
                 </div>
@@ -1307,7 +1309,7 @@
                             <div class="c2-file-toolbar">
                                 <button class="btn-ghost btn-sm" onclick="C2.goToParentDirectory()">${escapeHtml(c2t('c2.files.parent'))}</button>
                                 <button class="btn-ghost btn-sm" onclick="C2.refreshFiles()">${escapeHtml(c2t('c2.files.refresh'))}</button>
-                                <button type="button" class="btn-ghost btn-sm" id="c2-file-upload-btn" onclick="C2.openFileUploadPicker()" title="${escapeHtml(c2t('c2.files.upload'))}">${escapeHtml(c2t('c2.files.upload'))}</button>
+                                <button type="button" class="btn-ghost btn-sm" id="c2-file-upload-btn" data-require-permission="c2:write" onclick="C2.openFileUploadPicker()" title="${escapeHtml(c2t('c2.files.upload'))}">${escapeHtml(c2t('c2.files.upload'))}</button>
                                 <input type="file" id="c2-file-upload-input" style="display:none" onchange="C2.onC2FileUploadPick(event)" />
                                 <span id="c2-current-path" class="c2-path-breadcrumb">/</span>
                             </div>
@@ -1351,6 +1353,7 @@
             });
             requestAnimationFrame(function () { C2.fitTerminal(); });
         }, 0);
+        if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(container);
     };
 
     C2.switchTab = function(tab) {
@@ -3513,13 +3516,14 @@
                         ${formatTime(e.createdAt)} · ${escapeHtml(e.category || '')}${e.sessionId ? ' · ' + escapeHtml(String(e.sessionId).substring(0, 8)) : ''}
                     </div>
                 </div>
-                <button type="button" class="btn-secondary c2-event-row-delete" onclick="event.stopPropagation();C2.deleteEventById('${eid}')" title="${delTitle}" aria-label="${delTitle}">🗑</button>
+                <button type="button" class="btn-secondary c2-event-row-delete" data-require-permission="c2:delete" onclick="event.stopPropagation();C2.deleteEventById('${eid}')" title="${delTitle}" aria-label="${delTitle}">🗑</button>
             </div>
         `;
         }).join('');
 
         C2.syncEventsToolbar();
         if (typeof applyTranslations === 'function') applyTranslations(container);
+        if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(container);
     };
 
     C2.connectEventStream = function() {
@@ -3624,7 +3628,7 @@
             <div class="c2-profile-card">
                 <div class="c2-profile-header">
                     <h4>${escapeHtml(p.name)}</h4>
-                    <button class="btn-danger btn-sm" onclick="C2.deleteProfile('${p.id}')">${escapeHtml(c2t('common.delete'))}</button>
+                    <button class="btn-danger btn-sm" data-require-permission="c2:delete" onclick="C2.deleteProfile('${p.id}')">${escapeHtml(c2t('common.delete'))}</button>
                 </div>
                 <div class="c2-profile-info">
                     <div><strong>UA:</strong> ${escapeHtml(p.userAgent || defVal)}</div>
@@ -3633,6 +3637,7 @@
                 </div>
             </div>
         `).join('');
+        if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(container);
     };
 
     C2.showCreateProfileModal = function() {

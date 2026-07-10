@@ -6095,7 +6095,7 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
             const rawExecId = exec.id || '';
             const executionId = escapeHtml(rawExecId);
             const terminateBtn = status === 'running'
-                ? `<button type="button" class="btn-secondary btn-monitor-abort" onclick="cancelMCPToolExecution('${rawExecId.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${escapeHtml(terminateLabel)}</button>`
+                ? `<button type="button" class="btn-secondary btn-monitor-abort" data-require-permission="monitor:write" onclick="cancelMCPToolExecution('${rawExecId.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${escapeHtml(terminateLabel)}</button>`
                 : '';
             const jsExecId = rawExecId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             const isSelected = monitorState.selectedExecutions.has(rawExecId);
@@ -6112,7 +6112,7 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
                         <div class="monitor-execution-actions">
                             <button class="btn-secondary" onclick="showMCPDetail('${executionId}')">${escapeHtml(viewDetailLabel)}</button>
                             ${terminateBtn}
-                            <button class="btn-secondary btn-delete" onclick="deleteExecution('${executionId}')" title="${escapeHtml(deleteExecTitle)}">${escapeHtml(deleteLabel)}</button>
+                            <button class="btn-secondary btn-delete" data-require-permission="monitor:delete" onclick="deleteExecution('${executionId}')" title="${escapeHtml(deleteExecTitle)}">${escapeHtml(deleteLabel)}</button>
                         </div>
                     </td>
                 </tr>
@@ -6167,6 +6167,7 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
     
     // 更新批量操作状态
     updateBatchActionsState();
+    if (typeof rbacAfterDynamicRender === 'function') rbacAfterDynamicRender(tableContainer);
 }
 
 // 渲染监控面板分页控件

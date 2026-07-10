@@ -187,13 +187,7 @@ async function apiFetch(url, options = {}) {
             : '未授权访问';
         throw new Error(msg);
     }
-    if (response.status === 403) {
-        const result = await response.clone().json().catch(() => ({}));
-        const msg = result.error || (typeof window !== 'undefined' && typeof window.t === 'function'
-            ? window.t('auth.forbidden')
-            : '权限不足');
-        throw new Error(msg);
-    }
+    // 403 属于可预期的 RBAC 拒绝，返回 Response 供调用方通过 res.ok / ensureApiOk 处理。
     return response;
 }
 
@@ -351,6 +345,9 @@ async function bootstrapApp() {
         isAppInitialized = true;
     }
     applyRBACToUI();
+    if (typeof installWriteHandlerGuards === 'function') {
+        installWriteHandlerGuards();
+    }
     await refreshAppData();
 }
 
@@ -393,7 +390,103 @@ function hasPermission(permission) {
     return !permission || authPermissions.has(permission);
 }
 
-function applyRBACToUI() {
+function hasAnyPermission(permissions) {
+    if (!Array.isArray(permissions) || !permissions.length) return true;
+    return permissions.some((permission) => hasPermission(permission));
+}
+
+async function readApiError(response, fallback) {
+    if (!response) {
+        return fallback || authT('auth.requestFailed', '请求失败');
+    }
+    try {
+        const body = await response.clone().json();
+        return body.error || body.message || fallback || authT('auth.requestFailed', '请求失败');
+    } catch (error) {
+        return fallback || authT('auth.requestFailed', '请求失败');
+    }
+}
+
+function notifyApiError(message, type = 'error') {
+    const text = (message || '').trim() || authT('auth.requestFailed', '请求失败');
+    if (typeof showNotification === 'function') {
+        showNotification(text, type);
+        return;
+    }
+    if (typeof showToast === 'function') {
+        showToast(text, type);
+        return;
+    }
+    alert(text);
+}
+
+async function notifyApiResponseError(response, fallback) {
+    notifyApiError(await readApiError(response, fallback));
+}
+
+async function ensureApiOk(response, fallback) {
+    if (response && response.ok) return true;
+    await notifyApiResponseError(response, fallback);
+    return false;
+}
+
+function requirePermission(permission, customMessage) {
+    const allowed = Array.isArray(permission)
+        ? hasAnyPermission(permission)
+        : hasPermission(permission);
+    if (allowed) return true;
+    notifyApiError(customMessage || authT('auth.forbidden', '权限不足'));
+    return false;
+}
+
+function permissionAllowedForElement(el) {
+    if (!el) return true;
+    const anyOf = el.getAttribute('data-require-permission-any');
+    const permission = el.getAttribute('data-require-permission');
+    if (anyOf) {
+        return hasAnyPermission(anyOf.split(/[\s,|]+/).map((item) => item.trim()).filter(Boolean));
+    }
+    if (permission) {
+        return hasPermission(permission);
+    }
+    return true;
+}
+
+function applyPermissionElement(el) {
+    const anyOf = el.getAttribute('data-require-permission-any');
+    const permission = el.getAttribute('data-require-permission');
+    if (!anyOf && !permission) return;
+    const allowed = permissionAllowedForElement(el);
+    el.hidden = !allowed;
+    el.classList.toggle('rbac-permission-denied', !allowed);
+    if ('disabled' in el) {
+        el.disabled = !allowed;
+    }
+    el.setAttribute('aria-hidden', allowed ? 'false' : 'true');
+    el.setAttribute('aria-disabled', allowed ? 'false' : 'true');
+}
+
+let permissionClickGuardInstalled = false;
+
+function installPermissionClickGuard() {
+    if (permissionClickGuardInstalled) return;
+    permissionClickGuardInstalled = true;
+    document.addEventListener('click', (event) => {
+        const target = event.target instanceof Element
+            ? event.target.closest('[data-require-permission], [data-require-permission-any]')
+            : null;
+        if (!target || permissionAllowedForElement(target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation();
+        }
+        notifyApiError(authT('auth.forbidden', '权限不足'));
+    }, true);
+}
+
+function applyRBACToUI(root) {
+    installPermissionClickGuard();
     document.querySelectorAll('[data-page]').forEach((el) => {
         const page = el.getAttribute('data-page');
         const permission = PAGE_PERMISSION_MAP[page];
@@ -402,6 +495,11 @@ function applyRBACToUI() {
         el.hidden = !allowed;
         el.setAttribute('aria-hidden', allowed ? 'false' : 'true');
     });
+    const permissionRoot = root instanceof Element ? root : document;
+    permissionRoot.querySelectorAll('[data-require-permission], [data-require-permission-any]').forEach(applyPermissionElement);
+    if (permissionRoot instanceof Element && permissionRoot.matches('[data-require-permission], [data-require-permission-any]')) {
+        applyPermissionElement(permissionRoot);
+    }
     const userAvatar = document.querySelector('.user-avatar-btn');
     if (userAvatar && authUser && authUser.username) {
         const displayName = getAuthDisplayName();
@@ -537,6 +635,7 @@ function formatMarkdown(text, options) {
 }
 
 function setupLoginUI() {
+    installPermissionClickGuard();
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', submitLogin);
@@ -630,6 +729,19 @@ async function logout() {
 window.toggleUserMenu = toggleUserMenu;
 window.logout = logout;
 window.hasPermission = hasPermission;
+window.hasAnyPermission = hasAnyPermission;
+window.readApiError = readApiError;
+window.notifyApiError = notifyApiError;
+window.notifyApiResponseError = notifyApiResponseError;
+window.ensureApiOk = ensureApiOk;
+window.requirePermission = requirePermission;
+window.permissionAllowedForElement = permissionAllowedForElement;
 window.applyRBACToUI = applyRBACToUI;
+
+function rbacAfterDynamicRender(root) {
+    applyRBACToUI(root);
+}
+
+window.rbacAfterDynamicRender = rbacAfterDynamicRender;
 
 document.addEventListener('DOMContentLoaded', initializeApp);

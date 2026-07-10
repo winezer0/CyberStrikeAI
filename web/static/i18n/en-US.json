@@ -458,6 +458,7 @@
     "noFactsForVulnerability": "This vulnerability has no related facts yet. Link vulnerability or generate vulnerability draft from fact detail.",
     "promptChooseFactByIndex": "This vulnerability is linked to {{count}} facts. Enter index to view:\n{{lines}}",
     "enterProjectName": "Please enter project name",
+    "writePermissionDenied": "This account is read-only and cannot create or edit projects",
     "saveFailed": "Save failed",
     "invalidJson": "Invalid JSON format",
     "scopeNoteAuthorizedWebOnly": "Authorized for Web application layer testing only",
@@ -1417,6 +1418,8 @@
   "auth": {
     "sessionExpired": "Session expired, please sign in again",
     "unauthorized": "Unauthorized",
+    "forbidden": "Insufficient permissions",
+    "requestFailed": "Request failed",
     "enterPassword": "Please enter password",
     "loginFailedCheck": "Sign-in failed, please check the username or password",
     "loginFailedRetry": "Sign-in failed, please try again later",

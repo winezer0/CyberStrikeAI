@@ -2240,10 +2240,13 @@ function selectWebshell(id, stateReady) {
         '</div>' +
         '<div id="ws-project-list" class="role-selection-list-main"></div>' +
         '<div class="chat-project-panel-footer">' +
-        '<button type="button" class="role-selection-item-main chat-project-panel-create-btn" onclick="showNewProjectModalFromWebshellAi()">' +
-        '<span class="chat-project-panel-create-icon" aria-hidden="true">+</span>' +
-        '<span class="chat-project-panel-create-label">' + escapeHtml(wsProjectT('projects.newProject', '新建项目')) + '</span>' +
-        '</button></div></div></div></div>' +
+        ((typeof hasPermission === 'function' && hasPermission('project:write'))
+            ? ('<button type="button" class="role-selection-item-main chat-project-panel-create-btn" onclick="showNewProjectModalFromWebshellAi()">' +
+                '<span class="chat-project-panel-create-icon" aria-hidden="true">+</span>' +
+                '<span class="chat-project-panel-create-label">' + escapeHtml(wsProjectT('projects.newProject', '新建项目')) + '</span>' +
+                '</button>')
+            : '') +
+        '</div></div></div></div>' +
         '<div class="ws-role-selector-wrapper">' +
         '<button type="button" class="role-selector-btn ws-role-selector-btn" id="ws-role-selector-btn" onclick="wsToggleRolePanel()">' +
         '<span id="ws-role-selector-icon" class="role-selector-icon">\ud83d\udd35</span>' +
@@ -4604,6 +4607,7 @@ function deleteWebshell(id) {
 
 // 打开添加连接弹窗
 function showAddWebshellModal() {
+    if (typeof requirePermission === 'function' && !requirePermission('webshell:write')) return;
     var editIdEl = document.getElementById('webshell-edit-id');
     if (editIdEl) editIdEl.value = '';
     document.getElementById('webshell-url').value = '';
@@ -4920,6 +4924,7 @@ function testWebshellConnection() {
 
 // 保存连接（新建或更新，请求服务端写入 SQLite 后刷新列表）
 function saveWebshellConnection() {
+    if (typeof requirePermission === 'function' && !requirePermission('webshell:write')) return;
     var url = (document.getElementById('webshell-url') || {}).value;
     if (url && typeof url.trim === 'function') url = url.trim();
     if (!url) {

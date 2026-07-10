@@ -209,6 +209,10 @@ function renderRbacPendingSelection() {
 }
 
 function rbacNotify(message, type = 'info') {
+    if (typeof notifyApiError === 'function') {
+        notifyApiError(message, type);
+        return;
+    }
     if (typeof showNotification === 'function') showNotification(message, type);
     else if (type === 'error') alert(message);
 }

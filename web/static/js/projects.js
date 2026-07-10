@@ -26,10 +26,29 @@ function tpFmt(key, fallback, opts) {
     return text;
 }
 
-function tpFmt(key, fallback, opts) {
-    const text = tp(key, opts);
-    if (!text || text === key) return fallback;
-    return text;
+function requireProjectWrite() {
+    if (typeof requirePermission !== 'function') return true;
+    return requirePermission(
+        'project:write',
+        tpFmt('projects.writePermissionDenied', '当前账号仅有只读权限，无法创建或修改项目'),
+    );
+}
+
+function requireProjectDelete() {
+    if (typeof requirePermission !== 'function') return true;
+    return requirePermission(
+        'project:delete',
+        tpFmt('projects.writePermissionDenied', '当前账号仅有只读权限，无法删除项目'),
+    );
+}
+
+async function notifyProjectApiFailure(response, fallbackKey, fallbackText) {
+    if (typeof ensureApiOk === 'function') {
+        return ensureApiOk(response, tpFmt(fallbackKey, fallbackText));
+    }
+    if (!response || response.ok) return true;
+    alert(tpFmt(fallbackKey, fallbackText));
+    return false;
 }
 
 const PROJECTS_FILTER_SELECT_HANDLERS = {
@@ -838,8 +857,10 @@ function renderProjectsSidebar() {
     updateProjectsListCount();
     const list = projectsCache;
     if (!projectsCache.length) {
-        el.innerHTML =
-            `<div class="projects-empty">${escapeHtml(tp('projects.noProjects'))}<br><button type="button" class="btn-primary btn-small projects-empty-btn" onclick="showNewProjectModal()">${escapeHtml(tp('projects.newProject'))}</button></div>`;
+        const createBtn = (typeof hasPermission === 'function' && hasPermission('project:write'))
+            ? `<button type="button" class="btn-primary btn-small projects-empty-btn" onclick="showNewProjectModal()">${escapeHtml(tp('projects.newProject'))}</button>`
+            : '';
+        el.innerHTML = `<div class="projects-empty">${escapeHtml(tp('projects.noProjects'))}${createBtn ? `<br>${createBtn}` : ''}</div>`;
         updateProjectsDetailVisibility();
         renderProjectsPagination();
         return;
@@ -866,6 +887,7 @@ function renderProjectsSidebar() {
         </div>`;
     }).join('');
     updateProjectsDetailVisibility();
+    if (typeof applyRBACToUI === 'function') applyRBACToUI(el);
 }
 
 function clampProjectDescription(text) {
@@ -1029,6 +1051,7 @@ function toggleProjectFactGraphConnectMode() {
 
 async function handleGraphConnectNodePick(factKey) {
     if (!factKey || String(factKey).startsWith('vuln:')) return;
+    if (!requireProjectWrite()) return;
     if (!_graphConnectSource) {
         _graphConnectSource = factKey;
         if (typeof showNotification === 'function') {
@@ -1052,10 +1075,7 @@ async function handleGraphConnectNodePick(factKey) {
         }),
     });
     _graphConnectSource = null;
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(err.error || tp('projects.graphConnectFailed'));
-    }
+    if (!(await notifyProjectApiFailure(res, 'projects.graphConnectFailed', '创建边失败'))) return;
     if (typeof showNotification === 'function') showNotification(tp('projects.graphConnectSuccess'), 'success');
     loadProjectFactGraph();
     loadProjectFacts();
@@ -1270,16 +1290,14 @@ function focusProjectFactGraphEdge(edgeId) {
 
 async function deleteProjectFactEdge(edgeId) {
     if (!edgeId || !currentProjectId) return;
+    if (!requireProjectWrite()) return;
     const edge = (_currentGraphData?.edges || []).find((e) => e.id === edgeId);
     if (isSyntheticGraphEdge(edge)) return;
     if (!confirm(tp('projects.confirmDeleteGraphEdge'))) return;
     const res = await apiFetch(`/api/projects/${currentProjectId}/fact-edges/${encodeURIComponent(edgeId)}`, {
         method: 'DELETE',
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(err.error || tp('projects.graphEdgeDeleteFailed'));
-    }
+    if (!(await notifyProjectApiFailure(res, 'projects.graphEdgeDeleteFailed', '删除边失败'))) return;
     if (typeof showNotification === 'function') showNotification(tp('projects.graphEdgeDeleteSuccess'), 'success');
     const keepKey = _selectedGraphFactKey;
     await loadProjectFactGraph();
@@ -1439,15 +1457,13 @@ function openProjectConversation(conversationId) {
 
 async function promoteConversationAttackChain(conversationId) {
     if (!currentProjectId || !conversationId) return;
+    if (!requireProjectWrite()) return;
     if (!confirm(tp('projects.confirmPromoteAttackChain'))) return;
     const res = await apiFetch(
         `/api/projects/${currentProjectId}/promote-attack-chain/${encodeURIComponent(conversationId)}`,
         { method: 'POST' },
     );
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(err.error || tp('projects.promoteAttackChainFailed'));
-    }
+    if (!(await notifyProjectApiFailure(res, 'projects.promoteAttackChainFailed', '沉淀失败'))) return;
     const data = await res.json();
     if (typeof showNotification === 'function') {
         showNotification(
@@ -1581,6 +1597,7 @@ async function linkFactToExistingVulnerability() {
 async function createVulnerabilityFromCurrentFact() {
     const f = _factDetailFact;
     if (!f || !currentProjectId) return;
+    if (typeof requirePermission === 'function' && !requirePermission('vulnerability:write')) return;
     let convId =
         (f.source_conversation_id || '').trim() ||
         (typeof window.currentConversationId === 'string' ? window.currentConversationId.trim() : '');
@@ -1611,12 +1628,9 @@ async function createVulnerabilityFromCurrentFact() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(err.error || tp('projects.createVulnerabilityFailed'));
-    }
+    if (!(await notifyProjectApiFailure(res, 'projects.createVulnerabilityFailed', '创建漏洞失败'))) return;
     const vuln = await res.json();
-    await apiFetch(`/api/projects/${currentProjectId}/facts/${encodeURIComponent(f.id)}`, {
+    const upd = await apiFetch(`/api/projects/${currentProjectId}/facts/${encodeURIComponent(f.id)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1628,6 +1642,7 @@ async function createVulnerabilityFromCurrentFact() {
             related_vulnerability_id: vuln.id,
         }),
     });
+    if (!(await notifyProjectApiFailure(upd, 'projects.linkFailed', '关联失败'))) return;
     const createdVulnLabel = vuln.title || vuln.id;
     const successMsg = tp('projects.createVulnerabilityAndLinkSuccess', {
         value: createdVulnLabel,
@@ -1648,6 +1663,7 @@ function inferSeverityFromFact(f) {
 }
 
 async function deprecateProjectFactByKey(factKey) {
+    if (!requireProjectWrite()) return;
     if (!confirm(
         tp('projects.confirmDeprecateFact', {
             factKey,
@@ -1659,11 +1675,12 @@ async function deprecateProjectFactByKey(factKey) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fact_key: factKey }),
     });
-    if (!res.ok) return alert(tp('projects.operationFailed'));
+    if (!(await notifyProjectApiFailure(res, 'projects.operationFailed', '操作失败'))) return;
     loadProjectFacts();
 }
 
 async function restoreProjectFactByKey(factKey) {
+    if (!requireProjectWrite()) return;
     if (!confirm(
         tp('projects.confirmRestoreFact', {
             factKey,
@@ -1675,10 +1692,7 @@ async function restoreProjectFactByKey(factKey) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fact_key: factKey, confidence: 'tentative' }),
     });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(err.error || tp('projects.operationFailed'));
-    }
+    if (!(await notifyProjectApiFailure(res, 'projects.operationFailed', '操作失败'))) return;
     loadProjectFacts();
 }
 
@@ -1793,6 +1807,7 @@ function closeProjectsOverlay(id) {
 }
 
 function showNewProjectModal() {
+    if (!requireProjectWrite()) return;
     document.getElementById('project-modal-title').textContent = tp('projects.modalNewTitle');
     const sub = document.getElementById('project-modal-subtitle');
     if (sub) sub.textContent = tp('projects.modalNewSubtitle');
@@ -1806,6 +1821,7 @@ function showNewProjectModal() {
 
 async function showEditProjectModal(projectId) {
     if (!projectId) return;
+    if (!requireProjectWrite()) return;
     window._projectModalFromChat = false;
     window._projectModalEditId = projectId;
     document.getElementById('project-modal-title').textContent = tp('projects.modalEditTitle');
@@ -1848,6 +1864,7 @@ function showNewProjectModalFromChat() {
 }
 
 async function saveProjectModal() {
+    if (!requireProjectWrite()) return;
     const name = document.getElementById('project-modal-name').value.trim().slice(0, PROJECT_NAME_MAX_LENGTH);
     if (!name) return alert(tp('projects.enterProjectName'));
     const body = {
@@ -1855,31 +1872,39 @@ async function saveProjectModal() {
         description: clampProjectDescription(document.getElementById('project-modal-description').value),
     };
     const editId = window._projectModalEditId;
-    const res = editId
-        ? await apiFetch(`/api/projects/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-        : await apiFetch('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || tp('projects.saveFailed'));
-        return;
-    }
-    const fromChat = !!window._projectModalFromChat;
-    const fromWebshellConnId = window._projectModalFromWebshellConnId || '';
-    window._projectModalFromChat = false;
-    window._projectModalFromWebshellConnId = '';
-    closeProjectModal();
-    const saved = await res.json();
-    await loadProjectsList();
-    if (saved.id) {
-        if (fromWebshellConnId && !editId) {
-            if (typeof applyWebshellAiProjectSelection === 'function') {
-                await applyWebshellAiProjectSelection(saved.id);
+    const submitBtn = document.getElementById('project-modal-submit-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const res = editId
+            ? await apiFetch(`/api/projects/${editId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            : await apiFetch('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!(await notifyProjectApiFailure(res, 'projects.saveFailed', '保存失败'))) return;
+        const fromChat = !!window._projectModalFromChat;
+        const fromWebshellConnId = window._projectModalFromWebshellConnId || '';
+        window._projectModalFromChat = false;
+        window._projectModalFromWebshellConnId = '';
+        closeProjectModal();
+        const saved = await res.json();
+        await loadProjectsList();
+        if (saved.id) {
+            if (fromWebshellConnId && !editId) {
+                if (typeof applyWebshellAiProjectSelection === 'function') {
+                    await applyWebshellAiProjectSelection(saved.id);
+                }
+            } else if (fromChat && !editId) {
+                await applyChatProjectSelection(saved.id);
+            } else {
+                await selectProject(saved.id);
             }
-        } else if (fromChat && !editId) {
-            await applyChatProjectSelection(saved.id);
-        } else {
-            await selectProject(saved.id);
         }
+    } catch (error) {
+        if (typeof notifyApiError === 'function') {
+            notifyApiError(error?.message || tpFmt('projects.saveFailed', '保存失败'));
+        } else {
+            alert(error?.message || tpFmt('projects.saveFailed', '保存失败'));
+        }
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
     }
 }
 
@@ -1914,7 +1939,7 @@ function insertProjectScopeExample() {
 }
 
 async function saveProjectSettings() {
-    if (!currentProjectId) return;
+    if (!currentProjectId || !requireProjectWrite()) return;
     const scopeRaw = document.getElementById('project-edit-scope').value.trim();
     if (scopeRaw) {
         try {
@@ -1936,10 +1961,14 @@ async function saveProjectSettings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
     });
-    if (!res.ok) return alert(tp('projects.saveFailed'));
+    if (!(await notifyProjectApiFailure(res, 'projects.saveFailed', '保存失败'))) return;
     await loadProjectsList();
     await selectProject(currentProjectId);
-    alert(tp('projects.saved'));
+    if (typeof notifyApiError === 'function') {
+        notifyApiError(tp('projects.saved'), 'success');
+    } else {
+        alert(tp('projects.saved'));
+    }
 }
 
 function findProjectById(projectId) {
@@ -2002,6 +2031,7 @@ function showProjectListActionMenu(event, projectId) {
     }
     if (deleteText) deleteText.textContent = tp('projects.deleteProject');
     positionProjectListActionMenu(event);
+    if (typeof applyRBACToUI === 'function') applyRBACToUI(menu);
 }
 
 function initProjectListActionMenu() {
@@ -2020,6 +2050,7 @@ function initProjectListActionMenu() {
 }
 
 async function toggleProjectArchiveById(projectId) {
+    if (!requireProjectWrite()) return;
     const p = findProjectById(projectId);
     if (!p) return;
     const cur = p.status || 'active';
@@ -2030,7 +2061,7 @@ async function toggleProjectArchiveById(projectId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),
     });
-    if (!res.ok) return alert(tp('projects.operationFailed'));
+    if (!(await notifyProjectApiFailure(res, 'projects.operationFailed', '操作失败'))) return;
     await loadProjectsList();
     if (currentProjectId === projectId && projectsCache.some((item) => item.id === projectId)) {
         await selectProject(projectId);
@@ -2042,10 +2073,11 @@ async function toggleProjectArchiveById(projectId) {
 }
 
 async function deleteProjectById(projectId) {
+    if (!requireProjectDelete()) return;
     if (!projectId || !confirm(tp('projects.confirmDeleteProject'))) return;
     const deletedIndex = projectsCache.findIndex((p) => p.id === projectId);
     const res = await apiFetch(`/api/projects/${projectId}`, { method: 'DELETE' });
-    if (!res.ok) return alert(tp('projects.deleteFailed'));
+    if (!(await notifyProjectApiFailure(res, 'projects.deleteFailed', '删除失败'))) return;
     if (getActiveProjectId() === projectId) setActiveProjectId('');
     if (currentProjectId === projectId) currentProjectId = null;
     await loadProjectsList();
@@ -2147,12 +2179,14 @@ function fillFactModalForm(f) {
 
 function showAddFactModal() {
     if (!currentProjectId) return alert(tp('projects.selectProjectFirst'));
+    if (!requireProjectWrite()) return;
     resetFactModalForm();
     openProjectsOverlay('fact-modal');
 }
 
 async function showEditFactModal(factKey) {
     if (!currentProjectId) return alert(tp('projects.selectProjectFirst'));
+    if (!requireProjectWrite()) return;
     resetFactModalForm();
     openProjectsOverlay('fact-modal', { focus: false });
     const res = await apiFetch(
@@ -2175,6 +2209,7 @@ function closeFactModal() {
 }
 
 async function saveFactModal() {
+    if (!requireProjectWrite()) return;
     const fact_key = document.getElementById('fact-modal-key').value.trim();
     const summary = document.getElementById('fact-modal-summary').value.trim();
     const category = document.getElementById('fact-modal-category').value.trim() || 'note';
@@ -2208,18 +2243,17 @@ async function saveFactModal() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(payload),
           });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return alert(err.error || tp('projects.saveFailed'));
-    }
+    if (!(await notifyProjectApiFailure(res, 'projects.saveFailed', '保存失败'))) return;
     closeFactModal();
     loadProjectFacts();
     if (currentProjectTab === 'graph') loadProjectFactGraph();
 }
 
 async function deleteProjectFact(id) {
+    if (!requireProjectWrite()) return;
     if (!confirm(tp('projects.confirmDeleteFact'))) return;
-    await apiFetch(`/api/projects/${currentProjectId}/facts/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/projects/${currentProjectId}/facts/${id}`, { method: 'DELETE' });
+    if (!(await notifyProjectApiFailure(res, 'projects.operationFailed', '操作失败'))) return;
     loadProjectFacts();
     if (currentProjectTab === 'graph') loadProjectFactGraph();
 }
@@ -2511,6 +2545,8 @@ async function renderChatProjectPanel() {
     });
     clearProjectPickerPanelSearch('chat', 'chat-project-search');
     await loadChatProjectPanelList();
+    const panel = document.getElementById('chat-project-panel');
+    if (panel && typeof applyRBACToUI === 'function') applyRBACToUI(panel);
     requestAnimationFrame(() => document.getElementById('chat-project-search')?.focus());
 }
 

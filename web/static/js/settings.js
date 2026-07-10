@@ -584,10 +584,14 @@ window.onclick = function(event) {
 }
 
 // 加载配置
-async function loadConfig(loadTools = true) {
+async function loadConfig(loadTools = true, options = {}) {
+    const silent = options && options.silent === true;
     try {
         const response = await apiFetch('/api/config');
         if (!response.ok) {
+            if (typeof readApiError === 'function') {
+                throw new Error(await readApiError(response, '获取配置失败'));
+            }
             throw new Error('获取配置失败');
         }
         
@@ -993,10 +997,17 @@ async function loadConfig(loadTools = true) {
         }
     } catch (error) {
         console.error('加载配置失败:', error);
-        const baseMsg = (typeof window !== 'undefined' && typeof window.t === 'function')
-            ? window.t('settings.apply.loadFailed')
-            : '加载配置失败';
-        alert(baseMsg + ': ' + error.message);
+        if (!silent) {
+            const baseMsg = (typeof window !== 'undefined' && typeof window.t === 'function')
+                ? window.t('settings.apply.loadFailed')
+                : '加载配置失败';
+            if (typeof notifyApiError === 'function') {
+                notifyApiError(baseMsg + ': ' + error.message);
+            } else {
+                alert(baseMsg + ': ' + error.message);
+            }
+        }
+        throw error;
     }
 }
 
@@ -1050,6 +1061,9 @@ async function loadToolsList(page = 1, searchKeyword = '', options = {}) {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
+            if (typeof readApiError === 'function') {
+                throw new Error(await readApiError(response, '获取工具列表失败'));
+            }
             throw new Error('获取工具列表失败');
         }
         
@@ -2790,6 +2804,7 @@ async function testOpenAIConnection() {
 
 // 保存工具配置（独立函数，用于MCP管理页面）
 async function saveToolsConfig() {
+    if (typeof requirePermission === 'function' && !requirePermission('config:write')) return;
     try {
         // 先保存当前页的状态到全局映射
         saveCurrentPageToolStates();
@@ -3004,7 +3019,12 @@ let currentEditingMCPName = null;
 // 拉取外部MCP列表数据（供轮询使用，返回 { servers, stats }）
 async function fetchExternalMCPs() {
     const response = await apiFetch('/api/external-mcp');
-    if (!response.ok) throw new Error('获取外部MCP列表失败');
+    if (!response.ok) {
+        if (typeof readApiError === 'function') {
+            throw new Error(await readApiError(response, '获取外部MCP列表失败'));
+        }
+        throw new Error('获取外部MCP列表失败');
+    }
     return response.json();
 }
 
@@ -3207,6 +3227,7 @@ function renderExternalMCPStats(stats) {
 
 // 显示添加外部MCP模态框
 function showAddExternalMCPModal() {
+    if (typeof requirePermission === 'function' && !requirePermission('mcp:write')) return;
     currentEditingMCPName = null;
     document.getElementById('external-mcp-modal-title').textContent = (typeof window.t === 'function' ? window.t('mcp.addExternalMCP') : '添加外部MCP');
     document.getElementById('external-mcp-json').value = '';
@@ -3316,6 +3337,7 @@ function loadExternalMCPExample() {
 
 // 保存外部MCP
 async function saveExternalMCP() {
+    if (typeof requirePermission === 'function' && !requirePermission('mcp:write')) return;
     const jsonTextarea = document.getElementById('external-mcp-json');
     const jsonStr = jsonTextarea.value.trim();
     const errorDiv = document.getElementById('external-mcp-json-error');

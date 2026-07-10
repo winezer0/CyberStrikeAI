@@ -9045,6 +9045,7 @@ function navigateToVulnerabilitiesForContextConversation() {
 
 // 从上下文菜单删除对话
 function deleteConversationFromContext() {
+    if (typeof requirePermission === 'function' && !requirePermission('chat:delete')) return;
     const convId = contextMenuConversationId;
     if (!convId) return;
 
@@ -9596,6 +9597,7 @@ async function finishBatchGroupChangeAfterRemove() {
 
 // 删除选中的对话
 async function deleteSelectedConversations() {
+    if (typeof requirePermission === 'function' && !requirePermission('chat:delete')) return;
     const checkboxes = document.querySelectorAll('.batch-conversation-checkbox:checked');
     if (checkboxes.length === 0) {
         alert(typeof window.t === 'function' ? window.t('batchManageModal.confirmDeleteNone') : '请先选择要删除的对话');
@@ -9923,6 +9925,7 @@ document.addEventListener('click', function(event) {
 
 // 创建分组
 async function createGroup(event) {
+    if (typeof requirePermission === 'function' && !requirePermission('group:write')) return;
     // 阻止事件冒泡
     if (event) {
         event.preventDefault();
@@ -10356,6 +10359,7 @@ async function editGroup() {
 
 // 删除分组
 async function deleteGroup() {
+    if (typeof requirePermission === 'function' && !requirePermission('group:delete')) return;
     if (!currentGroupId) return;
 
     const deleteConfirmMsg = typeof window.t === 'function' ? window.t('chat.deleteGroupConfirm') : '确定要删除此分组吗？分组中的对话不会被删除，但会从分组中移除。';
@@ -10514,6 +10518,7 @@ async function pinGroupFromContext() {
 
 // 从上下文菜单删除分组
 async function deleteGroupFromContext() {
+    if (typeof requirePermission === 'function' && !requirePermission('group:delete')) return;
     const groupId = contextMenuGroupId;
     if (!groupId) return;
 

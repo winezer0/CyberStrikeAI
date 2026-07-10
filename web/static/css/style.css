@@ -19039,6 +19039,14 @@ tr.mcp-stats-tool-row[data-tool-name]:focus-visible {
 
 .rbac-workspace-view[hidden] { display: none !important; }
 #rbac-role-save-btn[hidden] { display: none !important; }
+
+/* display:flex 等会覆盖 [hidden] 默认 display:none，权限控件须强制隐藏 */
+[data-require-permission][hidden],
+[data-require-permission-any][hidden],
+[data-require-permission].rbac-permission-denied,
+[data-require-permission-any].rbac-permission-denied {
+    display: none !important;
+}
 .rbac-user-row.is-active { box-shadow: inset 3px 0 0 var(--primary-color, #2563eb); }
 .rbac-role-card.is-selected {
     border-color: rgba(37, 99, 235, 0.4);

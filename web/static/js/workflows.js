@@ -1613,6 +1613,7 @@
     window.closeWorkflowDryRunPanel = closeWorkflowDryRunPanel;
 
     window.saveWorkflowDraft = async function () {
+        if (typeof requirePermission === 'function' && !requirePermission('workflow:write')) return;
         initCy();
         const meta = readWorkflowMetaFromForm();
         if (!meta.id || !meta.name) {

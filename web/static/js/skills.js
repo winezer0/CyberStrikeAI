@@ -472,6 +472,7 @@ function wireSkillModalOnce() {
 }
 
 function showAddSkillModal() {
+    if (typeof requirePermission === 'function' && !requirePermission('skills:write')) return;
     wireSkillModalOnce();
     const modal = document.getElementById('skill-modal');
     if (!modal) return;
@@ -739,6 +740,7 @@ function closeSkillModal() {
 
 // 保存skill
 async function saveSkill() {
+    if (typeof requirePermission === 'function' && !requirePermission('skills:write')) return;
     if (isSavingSkill) return;
 
     const name = document.getElementById('skill-name').value.trim();

@@ -118,7 +118,7 @@
                             <div id="notification-dropdown" class="notification-dropdown" style="display: none;">
                                 <div class="notification-dropdown-header">
                                     <span id="notification-dropdown-title" data-i18n="notifications.title">事件通知</span>
-                                    <button class="notification-mark-read-btn" id="notification-mark-all-read-btn" type="button" onclick="markAllNotificationsSeen()" data-i18n="notifications.markAllRead">标记已读</button>
+                                    <button class="notification-mark-read-btn" id="notification-mark-all-read-btn" type="button" data-require-permission="notification:write" onclick="markAllNotificationsSeen()" data-i18n="notifications.markAllRead">标记已读</button>
                                 </div>
                                 <div id="notification-list" class="notification-list">
                                     <div class="notification-empty" data-i18n="notifications.empty">暂无新事件</div>
@@ -867,7 +867,7 @@
                         <aside class="conversation-sidebar" id="conversation-sidebar">
                             <!-- 头部一行：折叠与「新对话」并排，避免绝对定位重叠（flex 为最佳实践） -->
                             <div class="sidebar-header conversation-sidebar-header">
-                                <button type="button" class="new-chat-btn" onclick="startNewConversation()">
+                                <button type="button" class="new-chat-btn" data-require-permission="chat:write" onclick="startNewConversation()">
                                     <span>+</span> <span data-i18n="chat.newChat">新对话</span>
                                 </button>
                                 <button type="button" class="conversation-sidebar-collapse-btn" onclick="toggleConversationSidebar()" data-i18n="chat.toggleConversationPanel" data-i18n-attr="title" data-i18n-skip-text="true" title="折叠/展开对话列表" aria-label="折叠/展开对话列表">
@@ -904,7 +904,7 @@
                                 <div class="conversation-groups-section">
                                     <div class="section-header">
                                         <span class="section-title" data-i18n="chat.conversationGroups">对话分组</span>
-                                        <button class="add-group-btn" onclick="showCreateGroupModal()" data-i18n="chat.addGroup" data-i18n-attr="title" data-i18n-skip-text="true" title="新建分组">
+                                        <button class="add-group-btn" data-require-permission="group:write" onclick="showCreateGroupModal()" data-i18n="chat.addGroup" data-i18n-attr="title" data-i18n-skip-text="true" title="新建分组">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                             </svg>
@@ -949,7 +949,7 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                            <button class="batch-manage-btn" onclick="showBatchManageModal()" data-i18n="chat.batchManage" data-i18n-attr="title" data-i18n-skip-text="true" title="批量管理">
+                                            <button class="batch-manage-btn" data-require-permission="chat:delete" onclick="showBatchManageModal()" data-i18n="chat.batchManage" data-i18n-attr="title" data-i18n-skip-text="true" title="批量管理">
                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                     <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                                     <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1061,7 +1061,7 @@
                                             <p class="hitl-config-hint" data-i18n="chat.hitlWhitelistHint">每行一个或逗号分隔；与 config 中全局白名单合并展示。</p>
                                         </div>
                                         <div class="hitl-config-actions">
-                                            <button type="button" class="hitl-apply-btn" id="hitl-apply-btn" onclick="window.applyHitlSidebarConfig && window.applyHitlSidebarConfig()">
+                                            <button type="button" class="hitl-apply-btn" data-require-permission="hitl:write" id="hitl-apply-btn" onclick="window.applyHitlSidebarConfig && window.applyHitlSidebarConfig()">
                                                 <span data-i18n="chat.hitlApply">应用</span>
                                             </button>
                                         </div>
@@ -1086,13 +1086,13 @@
                                             <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                         </svg>
                                     </button>
-                                    <button class="group-action-btn" onclick="editGroup()" data-i18n="chatGroup.edit" data-i18n-attr="title" title="编辑">
+                                    <button class="group-action-btn" data-require-permission="group:write" onclick="editGroup()" data-i18n="chatGroup.edit" data-i18n-attr="title" title="编辑">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
                                     </button>
-                                    <button class="group-action-btn delete-btn" onclick="deleteGroup()" data-i18n="chatGroup.delete" data-i18n-attr="title" title="删除">
+                                    <button class="group-action-btn delete-btn" data-require-permission="group:delete" onclick="deleteGroup()" data-i18n="chatGroup.delete" data-i18n-attr="title" title="删除">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                         </svg>
@@ -1157,7 +1157,7 @@
                                             </div>
                                             <div id="chat-project-list" class="role-selection-list-main"></div>
                                             <div class="chat-project-panel-footer">
-                                                <button type="button" class="role-selection-item-main chat-project-panel-create-btn" onclick="showNewProjectModalFromChat()">
+                                                <button type="button" class="role-selection-item-main chat-project-panel-create-btn" data-require-permission="project:write" onclick="showNewProjectModalFromChat()">
                                                     <span class="chat-project-panel-create-icon" aria-hidden="true">+</span>
                                                     <span class="chat-project-panel-create-label" data-i18n="projects.newProject">新建项目</span>
                                                 </button>
@@ -1260,7 +1260,7 @@
                                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                 </button>
-                                <button type="button" class="send-btn" id="chat-send-btn" onclick="sendMessage()">
+                                <button type="button" class="send-btn" id="chat-send-btn" data-require-permission="chat:write" onclick="sendMessage()">
                                     <span data-i18n="chat.send">发送</span>
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                         <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1347,7 +1347,7 @@
                                     </select>
                                 </label>
                                 <button type="button" class="btn-secondary" onclick="filterHitlLogs()" data-i18n="hitl.searchApply">搜索</button>
-                                <button type="button" class="btn-secondary btn-delete" onclick="clearHitlLogs()" data-i18n="hitl.clearAll">清空</button>
+                                <button type="button" class="btn-secondary btn-delete" data-require-permission="hitl:write" onclick="clearHitlLogs()" data-i18n="hitl.clearAll">清空</button>
                             </div>
                             <p id="hitl-logs-retention-hint" class="hitl-logs-retention-hint" hidden></p>
                             <div id="hitl-logs-batch-actions" class="monitor-batch-actions" style="display: none;">
@@ -1357,7 +1357,7 @@
                                 <div class="batch-actions-buttons">
                                     <button type="button" class="btn-secondary" onclick="selectAllHitlLogs()" data-i18n="hitl.selectAll">全选</button>
                                     <button type="button" class="btn-secondary" onclick="deselectAllHitlLogs()" data-i18n="hitl.deselectAll">取消全选</button>
-                                    <button type="button" class="btn-secondary btn-delete" onclick="batchDeleteHitlLogs()" data-i18n="hitl.batchDelete">批量删除</button>
+                                    <button type="button" class="btn-secondary btn-delete" data-require-permission="hitl:write" onclick="batchDeleteHitlLogs()" data-i18n="hitl.batchDelete">批量删除</button>
                                 </div>
                             </div>
                             <div id="hitl-logs-table-wrap" class="hitl-logs-table-wrap">
@@ -1372,7 +1372,7 @@
                                     <span class="hitl-page-strategy-label" data-i18n="hitl.strategyLabel">审计策略</span>
                                     <div class="hitl-page-strategy-actions">
                                         <button type="button" class="btn-link" id="hitl-strategy-reset-btn" onclick="resetHitlAuditStrategy()" data-i18n="hitl.strategyReset">恢复默认</button>
-                                        <button type="button" class="btn-secondary" id="hitl-strategy-save-btn" onclick="saveHitlAuditStrategy()" data-i18n="common.save">保存</button>
+                                        <button type="button" class="btn-secondary" data-require-permission="hitl:write" id="hitl-strategy-save-btn" onclick="saveHitlAuditStrategy()" data-i18n="common.save">保存</button>
                                     </div>
                                 </div>
                                 <div class="hitl-strategy-subtabs" role="tablist" aria-label="Audit strategy mode">
@@ -1391,7 +1391,7 @@
                             <div class="hitl-page-whitelist-bar" id="hitl-page-whitelist-bar">
                                 <div class="hitl-page-whitelist-header">
                                     <span class="hitl-page-whitelist-label" data-i18n="hitl.whitelistLabel">免审批工具白名单</span>
-                                    <button type="button" class="btn-secondary" id="hitl-page-whitelist-save-btn" onclick="saveHitlPageWhitelist()" data-i18n="common.save">保存</button>
+                                    <button type="button" class="btn-secondary" data-require-permission="hitl:write" id="hitl-page-whitelist-save-btn" onclick="saveHitlPageWhitelist()" data-i18n="common.save">保存</button>
                                 </div>
                                 <p class="hitl-page-whitelist-hint" data-i18n="hitl.whitelistHint">每行一个或逗号分隔；保存后写入 config.yaml 全局白名单并立即生效（与聊天侧栏同步展示）。</p>
                                 <textarea id="hitl-page-sensitive-tools" class="hitl-page-whitelist-textarea" rows="6" spellcheck="false" autocomplete="off" data-i18n="chat.hitlWhitelistPlaceholder" data-i18n-attr="placeholder" placeholder=""></textarea>
@@ -1499,7 +1499,7 @@
                                     <div class="batch-actions-buttons">
                                         <button class="btn-secondary" onclick="selectAllExecutions()" data-i18n="mcp.selectAll">全选</button>
                                         <button class="btn-secondary" onclick="deselectAllExecutions()" data-i18n="mcpMonitor.deselectAll">取消全选</button>
-                                        <button class="btn-secondary btn-delete" onclick="batchDeleteExecutions()" data-i18n="mcp.deleteSelected">批量删除</button>
+                                        <button class="btn-secondary btn-delete" data-require-permission="monitor:delete" onclick="batchDeleteExecutions()" data-i18n="mcp.deleteSelected">批量删除</button>
                                     </div>
                                 </div>
                                 <div id="monitor-executions" class="monitor-table-container">
@@ -1524,7 +1524,7 @@
                         <div class="settings-section mcp-management-panel mcp-tools-panel" style="margin-bottom: 32px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <h3 style="margin: 0;" data-i18n="mcp.toolConfig">MCP 工具配置</h3>
-                                <button class="btn-primary" onclick="saveToolsConfig()" data-i18n="mcp.saveToolConfig">保存工具配置</button>
+                                <button class="btn-primary" data-require-permission="config:write" onclick="saveToolsConfig()" data-i18n="mcp.saveToolConfig">保存工具配置</button>
                             </div>
                             <div class="tools-controls mcp-panel-body">
                                 <div class="tools-actions">
@@ -1549,7 +1549,7 @@
                         <div class="settings-section mcp-management-panel mcp-external-panel">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                                 <h3 style="margin: 0;" data-i18n="mcp.externalConfig">外部 MCP 配置</h3>
-                                <button class="btn-primary" onclick="showAddExternalMCPModal()" data-i18n="mcp.addExternalMCP">添加外部MCP</button>
+                                <button class="btn-primary" data-require-permission="mcp:write" onclick="showAddExternalMCPModal()" data-i18n="mcp.addExternalMCP">添加外部MCP</button>
                             </div>
                             <div class="external-mcp-controls mcp-panel-body">
                                 <div class="external-mcp-actions">
@@ -1568,9 +1568,9 @@
                         <h2 data-i18n="knowledge.title">知识管理</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="refreshKnowledgeBase()" data-i18n="common.refresh">刷新</button>
-                            <button class="btn-secondary" onclick="buildKnowledgeIndex()" data-i18n="knowledge.buildIndex">构建索引</button>
-                            <button class="btn-secondary" onclick="rebuildKnowledgeIndexFull()" data-i18n="knowledge.rebuildIndexFull">全量重建</button>
-                            <button class="btn-primary" onclick="showAddKnowledgeItemModal()" data-i18n="knowledge.addKnowledge">添加知识</button>
+                            <button class="btn-secondary" data-require-permission="knowledge:write" onclick="buildKnowledgeIndex()" data-i18n="knowledge.buildIndex">构建索引</button>
+                            <button class="btn-secondary" data-require-permission="knowledge:write" onclick="rebuildKnowledgeIndexFull()" data-i18n="knowledge.rebuildIndexFull">全量重建</button>
+                            <button class="btn-primary" data-require-permission="knowledge:write" onclick="showAddKnowledgeItemModal()" data-i18n="knowledge.addKnowledge">添加知识</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -1673,7 +1673,7 @@
                         <h2 data-i18n="infoCollectPage.title">信息收集</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="resetFofaForm()" data-i18n="infoCollectPage.reset">重置</button>
-                            <button class="btn-primary" onclick="submitFofaSearch()" data-i18n="infoCollectPage.confirm">确定</button>
+                            <button class="btn-primary" data-require-permission="fofa:execute" onclick="submitFofaSearch()" data-i18n="infoCollectPage.confirm">确定</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -1737,10 +1737,10 @@
                                 <div class="info-collect-results-toolbar" aria-label="结果工具条" data-i18n="infoCollectPage.resultsToolbarAria" data-i18n-attr="aria-label" data-i18n-skip-text="true">
                                     <div class="info-collect-selected" id="fofa-selected-meta" data-i18n="infoCollectPage.selectedRowsZero">已选择 0 条</div>
                                     <button class="btn-secondary btn-small" type="button" onclick="toggleFofaColumnsPanel()" data-i18n="infoCollectPage.showHideColumns" data-i18n-attr="title" title="显示/隐藏字段"><span data-i18n="infoCollectPage.columns">列</span></button>
-                                    <button class="btn-secondary btn-small" type="button" onclick="exportFofaResults('csv')" data-i18n="infoCollectPage.exportCsvTitle" data-i18n-attr="title" title="导出当前结果为 CSV（UTF-8，兼容中文）"><span data-i18n="infoCollectPage.exportCsv">导出 CSV</span></button>
-                                    <button class="btn-secondary btn-small" type="button" onclick="exportFofaResults('json')" data-i18n="infoCollectPage.exportJsonTitle" data-i18n-attr="title" title="导出当前结果为 JSON"><span data-i18n="infoCollectPage.exportJson">导出 JSON</span></button>
-                                    <button class="btn-secondary btn-small" type="button" onclick="exportFofaResults('xlsx')" data-i18n="infoCollectPage.exportXlsxTitle" data-i18n-attr="title" title="导出当前结果为 Excel"><span data-i18n="infoCollectPage.exportXlsx">导出 XLSX</span></button>
-                                    <button class="btn-primary btn-small" type="button" onclick="batchScanSelectedFofaRows()" data-i18n="infoCollectPage.batchScanTitle" data-i18n-attr="title" title="将所选行创建为批量任务队列"><span data-i18n="infoCollectPage.batchScan">批量扫描</span></button>
+                                    <button class="btn-secondary btn-small" type="button" data-require-permission="fofa:execute" onclick="exportFofaResults('csv')" data-i18n="infoCollectPage.exportCsvTitle" data-i18n-attr="title" title="导出当前结果为 CSV（UTF-8，兼容中文）"><span data-i18n="infoCollectPage.exportCsv">导出 CSV</span></button>
+                                    <button class="btn-secondary btn-small" type="button" data-require-permission="fofa:execute" onclick="exportFofaResults('json')" data-i18n="infoCollectPage.exportJsonTitle" data-i18n-attr="title" title="导出当前结果为 JSON"><span data-i18n="infoCollectPage.exportJson">导出 JSON</span></button>
+                                    <button class="btn-secondary btn-small" type="button" data-require-permission="fofa:execute" onclick="exportFofaResults('xlsx')" data-i18n="infoCollectPage.exportXlsxTitle" data-i18n-attr="title" title="导出当前结果为 Excel"><span data-i18n="infoCollectPage.exportXlsx">导出 XLSX</span></button>
+                                    <button class="btn-primary btn-small" data-require-permission="fofa:execute" type="button" onclick="batchScanSelectedFofaRows()" data-i18n="infoCollectPage.batchScanTitle" data-i18n-attr="title" title="将所选行创建为批量任务队列"><span data-i18n="infoCollectPage.batchScan">批量扫描</span></button>
                                 </div>
                             </div>
                             <div class="info-collect-results-table-wrap">
@@ -1774,7 +1774,7 @@
                         <div class="page-header-actions">
                             <label class="projects-show-archived-label"><input type="checkbox" id="projects-show-archived" onchange="loadProjectsList()"> <span data-i18n="projects.showArchived">显示已归档</span></label>
                             <button class="btn-secondary" type="button" onclick="loadProjectsList()" data-i18n="common.refresh">刷新</button>
-                            <button class="btn-primary" type="button" onclick="showNewProjectModal()" data-i18n="projects.newProjectCta">+ 新建项目</button>
+                            <button class="btn-primary" type="button" data-require-permission="project:write" onclick="showNewProjectModal()" data-i18n="projects.newProjectCta">+ 新建项目</button>
                         </div>
                     </div>
                     <div class="page-content projects-page-layout">
@@ -1800,7 +1800,7 @@
                                 </div>
                                 <h3 data-i18n="projects.selectOrCreateTitle">选择或创建项目</h3>
                                 <p data-i18n="projects.selectOrCreateHint">项目用于跨对话共享「事实黑板」：目标、环境、认证等信息会在绑定项目的对话中自动注入。</p>
-                                <button class="btn-primary" type="button" onclick="showNewProjectModal()" data-i18n="projects.createFirstProject">创建第一个项目</button>
+                                <button class="btn-primary" type="button" data-require-permission="project:write" onclick="showNewProjectModal()" data-i18n="projects.createFirstProject">创建第一个项目</button>
                             </div>
                             <div class="projects-detail-inner" id="projects-detail-inner" hidden>
                                 <header class="projects-detail-header">
@@ -1825,7 +1825,7 @@
                                             <span id="projects-detail-meta-time" class="projects-detail-meta-time"></span>
                                         </span>
                                         <button type="button" class="btn-secondary btn-small" onclick="openVulnerabilitiesForProject()" data-i18n="projects.vulnerabilityManagement">漏洞管理</button>
-                                        <button type="button" class="btn-primary btn-small" onclick="showAddFactModal()" data-i18n="projects.addFactCta">+ 添加事实</button>
+                                        <button type="button" class="btn-primary btn-small" data-require-permission="project:write" onclick="showAddFactModal()" data-i18n="projects.addFactCta">+ 添加事实</button>
                                     </div>
                                 </header>
                                 <nav class="projects-tabs" role="tablist">
@@ -1930,7 +1930,7 @@
                                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                                                     <span data-i18n="projects.graphCenter">居中</span>
                                                 </button>
-                                                <button type="button" class="projects-graph-action-btn projects-graph-action-btn--connect" id="project-graph-connect-btn" onclick="toggleProjectFactGraphConnectMode()" data-i18n="projects.graphConnect">连边</button>
+                                                <button type="button" class="projects-graph-action-btn projects-graph-action-btn--connect" data-require-permission="project:write" id="project-graph-connect-btn" onclick="toggleProjectFactGraphConnectMode()" data-i18n="projects.graphConnect">连边</button>
                                             </div>
                                         </div>
                                     </div>
@@ -1954,7 +1954,7 @@
                                             </div>
                                             <div class="project-fact-graph-sidebar-actions">
                                                 <button type="button" class="btn-primary btn-small" id="project-fact-graph-detail-btn" onclick="openSelectedGraphFactDetail()" data-i18n="projects.details">详情</button>
-                                                <button type="button" class="btn-secondary btn-small" id="project-fact-graph-edit-btn" onclick="editSelectedGraphFact()" data-i18n="common.edit">编辑</button>
+                                                <button type="button" class="btn-secondary btn-small" data-require-permission="project:write" id="project-fact-graph-edit-btn" onclick="editSelectedGraphFact()" data-i18n="common.edit">编辑</button>
                                             </div>
                                         </aside>
                                     </div>
@@ -2135,14 +2135,14 @@
                                                 </div>
                                             </div>
                                             <div class="projects-settings-danger-actions">
-                                                <button class="btn-secondary btn-small" type="button" onclick="archiveCurrentProject()" data-i18n="projects.archiveRestore">归档 / 恢复</button>
-                                                <button class="btn-secondary btn-small btn-danger-outline" type="button" onclick="deleteCurrentProject()" data-i18n="projects.deleteProject">删除项目</button>
+                                                <button class="btn-secondary btn-small" data-require-permission="project:write" type="button" onclick="archiveCurrentProject()" data-i18n="projects.archiveRestore">归档 / 恢复</button>
+                                                <button class="btn-secondary btn-small btn-danger-outline" data-require-permission="project:delete" type="button" onclick="deleteCurrentProject()" data-i18n="projects.deleteProject">删除项目</button>
                                             </div>
                                         </section>
                                     </div>
                                     <footer class="projects-settings-footer">
                                         <span class="projects-settings-footer-hint" data-i18n="projects.saveChangesHint">修改后请点击保存以同步到服务器</span>
-                                        <button class="btn-primary" type="button" onclick="saveProjectSettings()">
+                                        <button class="btn-primary" data-require-permission="project:write" type="button" onclick="saveProjectSettings()">
                                             <span data-i18n="projects.saveSettings">保存更改</span>
                                         </button>
                                     </footer>
@@ -2156,10 +2156,10 @@
                     <div class="page-header">
                         <h2 data-i18n="vulnerability.title">漏洞管理</h2>
                         <div class="page-header-actions">
-                            <button class="btn-secondary" onclick="exportVulnerabilityReports()" data-i18n="vulnerabilityPage.batchExport">批量导出</button>
-                            <button class="btn-secondary btn-delete" onclick="batchDeleteVulnerabilityReports()" data-i18n="vulnerabilityPage.batchDelete">批量删除</button>
+                            <button class="btn-secondary" data-require-permission="vulnerability:read" onclick="exportVulnerabilityReports()" data-i18n="vulnerabilityPage.batchExport">批量导出</button>
+                            <button class="btn-secondary btn-delete" data-require-permission="vulnerability:delete" onclick="batchDeleteVulnerabilityReports()" data-i18n="vulnerabilityPage.batchDelete">批量删除</button>
                             <button class="btn-secondary" onclick="refreshVulnerabilities()" data-i18n="common.refresh">刷新</button>
-                            <button class="btn-primary" onclick="showAddVulnerabilityModal()" data-i18n="vulnerability.addVuln">添加漏洞</button>
+                            <button class="btn-primary" data-require-permission="vulnerability:write" onclick="showAddVulnerabilityModal()" data-i18n="vulnerability.addVuln">添加漏洞</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -2322,7 +2322,7 @@
                     <div class="page-header">
                         <h2 data-i18n="webshell.title">WebShell 管理</h2>
                         <div class="page-header-actions">
-                            <button class="btn-primary" onclick="showAddWebshellModal()" data-i18n="webshell.addConnection">添加连接</button>
+                            <button class="btn-primary" data-require-permission="webshell:write" onclick="showAddWebshellModal()" data-i18n="webshell.addConnection">添加连接</button>
                         </div>
                     </div>
                     <div class="page-content webshell-page-content">
@@ -2359,7 +2359,7 @@
                     <div class="page-header">
                         <h2 data-i18n="chatFilesPage.title">文件管理</h2>
                         <div class="page-header-actions">
-                            <button type="button" class="btn-primary" id="chat-files-header-upload-btn" onclick="chatFilesOpenUploadPicker()" data-i18n="chatFilesPage.upload">上传文件</button>
+                            <button type="button" class="btn-primary" id="chat-files-header-upload-btn" data-require-permission="files:write" onclick="chatFilesOpenUploadPicker()" data-i18n="chatFilesPage.upload">上传文件</button>
                             <input type="file" id="chat-files-upload-input" style="display:none" multiple onchange="onChatFilesUploadPick(event)" />
                             <button type="button" class="btn-secondary" id="chat-files-refresh-btn" onclick="loadChatFilesPage()" data-i18n="common.refresh">刷新</button>
                         </div>
@@ -2401,7 +2401,7 @@
                     <div class="page-header">
                         <h2 data-i18n="tasks.title">任务管理</h2>
                         <div class="page-header-actions">
-                            <button class="btn-primary" onclick="showBatchImportModal()" data-i18n="tasks.newTask">新建任务</button>
+                            <button class="btn-primary" data-require-permission="tasks:write" onclick="showBatchImportModal()" data-i18n="tasks.newTask">新建任务</button>
                             <label class="auto-refresh-toggle">
                                 <input type="checkbox" id="tasks-auto-refresh" checked onchange="toggleTasksAutoRefresh(this.checked)">
                                 <span data-i18n="tasks.autoRefresh">自动刷新</span>
@@ -2444,7 +2444,7 @@
                     <div class="page-header">
                         <h2 data-i18n="c2.listeners.title">监听器管理</h2>
                         <div class="page-header-actions">
-                            <button class="btn-primary" onclick="C2.showCreateListenerModal()" data-i18n="c2.listeners.headerCreateBtn">+ 创建监听器</button>
+                            <button class="btn-primary" data-require-permission="c2:write" onclick="C2.showCreateListenerModal()" data-i18n="c2.listeners.headerCreateBtn">+ 创建监听器</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -2457,8 +2457,8 @@
                     <div class="page-header">
                         <h2 data-i18n="c2.sessions.title">会话管理</h2>
                         <div class="page-header-actions">
-                            <button type="button" class="btn-danger" id="c2-sessions-batch-delete" disabled onclick="C2.deleteSelectedSessions()"><span data-i18n="c2.sessions.batchDelete">批量删除</span></button>
-                            <button type="button" class="btn-secondary" id="c2-sessions-delete-filtered" disabled onclick="C2.deleteFilteredSessions()"><span data-i18n="c2.sessions.deleteFiltered">删除筛选结果</span></button>
+                            <button type="button" class="btn-danger" id="c2-sessions-batch-delete" data-require-permission="c2:delete" disabled onclick="C2.deleteSelectedSessions()"><span data-i18n="c2.sessions.batchDelete">批量删除</span></button>
+                            <button type="button" class="btn-secondary" id="c2-sessions-delete-filtered" data-require-permission="c2:delete" disabled onclick="C2.deleteFilteredSessions()"><span data-i18n="c2.sessions.deleteFiltered">删除筛选结果</span></button>
                             <button class="btn-secondary" onclick="C2.loadSessions()"><span data-i18n="common.refresh">刷新</span></button>
                         </div>
                     </div>
@@ -2478,7 +2478,7 @@
                     <div class="page-header">
                         <h2 data-i18n="c2.tasks.title">任务管理</h2>
                         <div class="page-header-actions">
-                            <button type="button" class="btn-danger" id="c2-tasks-batch-delete" disabled onclick="C2.deleteSelectedTasks()"><span data-i18n="c2.tasks.batchDelete">批量删除</span></button>
+                            <button type="button" class="btn-danger" id="c2-tasks-batch-delete" data-require-permission="c2:delete" disabled onclick="C2.deleteSelectedTasks()"><span data-i18n="c2.tasks.batchDelete">批量删除</span></button>
                             <button type="button" class="btn-secondary" onclick="C2.loadTasks()"><span data-i18n="common.refresh">刷新</span></button>
                         </div>
                     </div>
@@ -2521,7 +2521,7 @@
                                     <label data-i18n="c2.payloads.hostOptional">回连地址 (可选)</label>
                                     <input type="text" id="c2-payload-host" class="form-control" data-i18n="c2.payloads.placeholderListenerHost" data-i18n-attr="placeholder" placeholder="留空则使用监听器地址">
                                 </div>
-                                <button type="button" id="c2-generate-oneliner-btn" class="btn-primary" onclick="C2.generateOneliner()" style="width:100%;" data-i18n="c2.payloads.generateOnelinerBtn">生成 Oneliner</button>
+                                <button type="button" id="c2-generate-oneliner-btn" class="btn-primary" data-require-permission="c2:write" onclick="C2.generateOneliner()" style="width:100%;" data-i18n="c2.payloads.generateOnelinerBtn">生成 Oneliner</button>
                                 <pre id="c2-oneliner-output" class="c2-oneliner-output" style="display:none;" onclick="C2.copyOneliner()" data-i18n="c2.payloads.clickToCopyTitle" data-i18n-attr="title" data-i18n-skip-text="true" title="点击复制"></pre>
                             </div>
                             <div class="c2-payload-card">
@@ -2559,7 +2559,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <button id="c2-build-btn" type="button" class="btn-primary" onclick="C2.buildBeacon()" style="width:100%;" data-i18n="c2.payloads.buildBeaconBtn">构建 Beacon</button>
+                                <button id="c2-build-btn" type="button" class="btn-primary" data-require-permission="c2:write" onclick="C2.buildBeacon()" style="width:100%;" data-i18n="c2.payloads.buildBeaconBtn">构建 Beacon</button>
                                 <div id="c2-build-result"></div>
                             </div>
                         </div>
@@ -2571,7 +2571,7 @@
                     <div class="page-header">
                         <h2 data-i18n="c2.events.title">事件审计</h2>
                         <div class="page-header-actions">
-                            <button type="button" class="btn-danger" id="c2-events-batch-delete" disabled onclick="C2.deleteSelectedEvents()"><span data-i18n="c2.events.batchDelete">批量删除</span></button>
+                            <button type="button" class="btn-danger" id="c2-events-batch-delete" data-require-permission="c2:delete" disabled onclick="C2.deleteSelectedEvents()"><span data-i18n="c2.events.batchDelete">批量删除</span></button>
                             <button type="button" class="btn-secondary" onclick="C2.loadEvents()"><span data-i18n="common.refresh">刷新</span></button>
                         </div>
                     </div>
@@ -2592,7 +2592,7 @@
                     <div class="page-header">
                         <h2 data-i18n="c2.profiles.title">流量伪装</h2>
                         <div class="page-header-actions">
-                            <button class="btn-primary" onclick="C2.showCreateProfileModal()" data-i18n="c2.profiles.createBtn">+ 创建 Profile</button>
+                            <button class="btn-primary" data-require-permission="c2:write" onclick="C2.showCreateProfileModal()" data-i18n="c2.profiles.createBtn">+ 创建 Profile</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -2631,13 +2631,13 @@
                                     <h3 data-i18n="workflows.nodeLibrary">节点库</h3>
                                 </div>
                                 <div class="workflow-node-palette">
-                                    <button type="button" draggable="true" data-node-type="start" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('start')" data-i18n="workflows.nodes.start">开始</button>
-                                    <button type="button" draggable="true" data-node-type="tool" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('tool')" data-i18n="workflows.nodes.tool">工具</button>
-                                    <button type="button" draggable="true" data-node-type="agent" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('agent')" data-i18n="workflows.nodes.agent">Agent</button>
-                                    <button type="button" draggable="true" data-node-type="condition" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('condition')" data-i18n="workflows.nodes.condition">条件</button>
-                                    <button type="button" draggable="true" data-node-type="hitl" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('hitl')" data-i18n="workflows.nodes.hitl">审批</button>
-                                    <button type="button" draggable="true" data-node-type="output" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('output')" data-i18n="workflows.nodes.output">输出</button>
-                                    <button type="button" draggable="true" data-node-type="end" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('end')" data-i18n="workflows.nodes.end">结束</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="start" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('start')" data-i18n="workflows.nodes.start">开始</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="tool" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('tool')" data-i18n="workflows.nodes.tool">工具</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="agent" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('agent')" data-i18n="workflows.nodes.agent">Agent</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="condition" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('condition')" data-i18n="workflows.nodes.condition">条件</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="hitl" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('hitl')" data-i18n="workflows.nodes.hitl">审批</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="output" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('output')" data-i18n="workflows.nodes.output">输出</button>
+                                    <button type="button" draggable="true" data-require-permission="workflow:write" data-node-type="end" ondragstart="workflowPaletteDragStart(event)" onclick="addWorkflowNodeFromPalette('end')" data-i18n="workflows.nodes.end">结束</button>
                                 </div>
                             </div>
                         </aside>
@@ -2650,12 +2650,12 @@
                                     </div>
                                 </div>
                                 <div class="workflow-toolbar">
-                                    <button class="btn-secondary btn-small" type="button" onclick="toggleWorkflowConnectMode()" id="workflow-connect-btn" data-i18n="workflows.connect">连线</button>
-                                    <button class="btn-secondary btn-small" type="button" onclick="deleteWorkflowSelection()" data-i18n="workflows.deleteSelected">删除选中</button>
+                                    <button class="btn-secondary btn-small" data-require-permission="workflow:write" type="button" onclick="toggleWorkflowConnectMode()" id="workflow-connect-btn" data-i18n="workflows.connect">连线</button>
+                                    <button class="btn-secondary btn-small" data-require-permission="workflow:delete" type="button" onclick="deleteWorkflowSelection()" data-i18n="workflows.deleteSelected">删除选中</button>
                                     <button class="btn-secondary btn-small" type="button" onclick="layoutWorkflowGraph()" data-i18n="workflows.autoLayout">自动布局</button>
-                                    <button class="btn-secondary btn-small" type="button" onclick="dryRunWorkflowDraft()" data-i18n="workflows.dryRun">试运行</button>
-                                    <button class="btn-secondary btn-small" onclick="deleteCurrentWorkflow()" data-i18n="common.delete">删除</button>
-                                    <button class="btn-primary btn-small" onclick="saveWorkflowDraft()" data-i18n="common.save">保存</button>
+                                    <button class="btn-secondary btn-small" data-require-permission="workflow:execute" type="button" onclick="dryRunWorkflowDraft()" data-i18n="workflows.dryRun">试运行</button>
+                                    <button class="btn-secondary btn-small" data-require-permission="workflow:delete" onclick="deleteCurrentWorkflow()" data-i18n="common.delete">删除</button>
+                                    <button class="btn-primary btn-small" data-require-permission="workflow:write" onclick="saveWorkflowDraft()" data-i18n="common.save">保存</button>
                                 </div>
                             </section>
                             <section class="workflow-canvas-wrap" ondragover="workflowCanvasDragOver(event)" ondrop="workflowCanvasDrop(event)">
@@ -2666,7 +2666,7 @@
                         <aside class="workflow-properties">
                             <div class="workflow-panel-header">
                                 <h3 id="workflow-property-title" data-i18n="workflows.properties">属性</h3>
-                                <button type="button" id="workflow-property-delete-btn" class="btn-secondary btn-small" onclick="deleteWorkflowSelection()" hidden data-i18n="common.delete">删除</button>
+                                <button type="button" id="workflow-property-delete-btn" class="btn-secondary btn-small" data-require-permission="workflow:delete" onclick="deleteWorkflowSelection()" hidden data-i18n="common.delete">删除</button>
                             </div>
                             <div id="workflow-property-empty" class="workflow-property-empty" data-i18n="workflows.propertyEmpty">选择一个节点或连线后编辑属性</div>
                             <div id="workflow-property-form" class="workflow-property-form" hidden>
@@ -2689,7 +2689,7 @@
                                 <div id="workflow-typed-config" class="workflow-typed-config"></div>
                                 <div class="workflow-custom-fields-head">
                                     <span data-i18n="workflows.customFields">自定义字段</span>
-                                    <button type="button" class="btn-secondary btn-small" onclick="addWorkflowCustomField()" data-i18n="workflows.addField">添加字段</button>
+                                    <button type="button" class="btn-secondary btn-small" data-require-permission="workflow:write" onclick="addWorkflowCustomField()" data-i18n="workflows.addField">添加字段</button>
                                 </div>
                                 <div id="workflow-custom-fields" class="workflow-custom-fields"></div>
                             </div>
@@ -2714,7 +2714,7 @@
                         <h2 data-i18n="roles.title">角色管理</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="refreshRoles()" data-i18n="common.refresh">刷新</button>
-                            <button class="btn-primary" onclick="showAddRoleModal()" data-i18n="roles.createRole">创建角色</button>
+                            <button class="btn-primary" data-require-permission="roles:write" onclick="showAddRoleModal()" data-i18n="roles.createRole">创建角色</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -2774,7 +2774,7 @@
                         <h2 data-i18n="skills.title">Skills管理</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="refreshSkills()" data-i18n="common.refresh">刷新</button>
-                            <button class="btn-primary" onclick="showAddSkillModal()" data-i18n="skills.createSkill">创建Skill</button>
+                            <button class="btn-primary" data-require-permission="skills:write" onclick="showAddSkillModal()" data-i18n="skills.createSkill">创建Skill</button>
                         </div>
                     </div>
                     <div class="page-content page-content-with-pagination">
@@ -2820,7 +2820,7 @@
                         <h2 data-i18n="agentsPage.title">Agent 管理</h2>
                         <div class="page-header-actions">
                             <button type="button" class="btn-secondary" onclick="loadMarkdownAgents()" data-i18n="common.refresh">刷新</button>
-                            <button type="button" class="btn-primary" onclick="showAddMarkdownAgentModal()" data-i18n="agentsPage.create">新建 Agent</button>
+                            <button type="button" class="btn-primary" data-require-permission="agents:write" onclick="showAddMarkdownAgentModal()" data-i18n="agentsPage.create">新建 Agent</button>
                         </div>
                     </div>
                     <div class="page-content">
@@ -2884,7 +2884,7 @@
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn-secondary" onclick="closeMarkdownAgentModal()" data-i18n="common.cancel">取消</button>
-                            <button type="button" class="btn-primary" onclick="saveMarkdownAgent()" data-i18n="common.save">保存</button>
+                            <button type="button" class="btn-primary" data-require-permission="agents:write" onclick="saveMarkdownAgent()" data-i18n="common.save">保存</button>
                         </div>
                     </div>
                 </div>
@@ -3164,7 +3164,7 @@
                                 </div>
 
                                 <div class="settings-actions">
-                                    <button class="btn-primary" onclick="applySettings()" data-i18n="settings.apply.button">应用配置</button>
+                                    <button class="btn-primary" onclick="applySettings()" data-require-permission="config:write" data-i18n="settings.apply.button">应用配置</button>
                                 </div>
                             </div>
 
@@ -3251,7 +3251,7 @@
                                 </div>
 
                                 <div class="settings-actions">
-                                    <button type="button" class="btn-primary" onclick="applySettings()" data-i18n="settings.apply.button">应用配置</button>
+                                    <button type="button" class="btn-primary" onclick="applySettings()" data-require-permission="config:write" data-i18n="settings.apply.button">应用配置</button>
                                 </div>
                             </div>
 
@@ -3283,7 +3283,7 @@
                                 </div>
 
                                 <div class="settings-actions">
-                                    <button type="button" class="btn-primary" onclick="applySettings()" data-i18n="settings.apply.button">应用配置</button>
+                                    <button type="button" class="btn-primary" onclick="applySettings()" data-require-permission="config:write" data-i18n="settings.apply.button">应用配置</button>
                                 </div>
                             </div>
 
@@ -3484,7 +3484,7 @@
                                 </div>
 
                                 <div class="settings-actions">
-                                    <button class="btn-primary" onclick="applySettings()" data-i18n="settings.apply.button">应用配置</button>
+                                    <button class="btn-primary" onclick="applySettings()" data-require-permission="config:write" data-i18n="settings.apply.button">应用配置</button>
                                 </div>
                             </div>
 
@@ -3507,7 +3507,7 @@
                                     </div>
                                 </div>
                                 <div class="settings-actions">
-                                    <button class="btn-primary" onclick="applySettings()" data-i18n="settings.apply.button">应用配置</button>
+                                    <button class="btn-primary" onclick="applySettings()" data-require-permission="config:write" data-i18n="settings.apply.button">应用配置</button>
                                 </div>
                             </div>
 
@@ -3524,11 +3524,11 @@
                                             <h4 data-i18n="settings.robots.managerTitle">机器人管理</h4>
                                             <p data-i18n="settings.robots.managerDesc">先选择机器人类型，再进入对应配置；已配置的平台会显示连接状态。</p>
                                         </div>
-                                        <button type="button" class="btn-primary" onclick="openRobotCreateModal()" data-i18n="settings.robots.newBot">新建机器人</button>
+                                        <button type="button" class="btn-primary" data-require-permission="robot:write" onclick="openRobotCreateModal()" data-i18n="settings.robots.newBot">新建机器人</button>
                                     </div>
 
                                     <div class="robot-card-grid">
-                                        <button type="button" class="robot-card" data-robot-card="wechat" onclick="openRobotEditor('wechat')">
+                                        <button type="button" class="robot-card" data-robot-card="wechat" data-require-permission="robot:write" onclick="openRobotEditor('wechat')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.wechat.title">微信 / iLink</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.wechat.subtitle">扫码绑定个人微信，在手机端直接与 CyberStrikeAI 对话</span>
@@ -3538,7 +3538,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="wecom" onclick="openRobotEditor('wecom')">
+                                        <button type="button" class="robot-card" data-robot-card="wecom" data-require-permission="robot:write" onclick="openRobotEditor('wecom')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.wecom.title">企业微信</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.wecom.subtitle">HTTP 回调模式，适合企业内部应用机器人</span>
@@ -3548,7 +3548,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="dingtalk" onclick="openRobotEditor('dingtalk')">
+                                        <button type="button" class="robot-card" data-robot-card="dingtalk" data-require-permission="robot:write" onclick="openRobotEditor('dingtalk')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.dingtalk.title">钉钉</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.dingtalk.subtitle">企业内部应用机器人，使用 Stream 长连接</span>
@@ -3558,7 +3558,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="lark" onclick="openRobotEditor('lark')">
+                                        <button type="button" class="robot-card" data-robot-card="lark" data-require-permission="robot:write" onclick="openRobotEditor('lark')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.lark.title">飞书 (Lark)</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.lark.subtitle">飞书企业应用机器人，支持单聊与群聊 @</span>
@@ -3568,7 +3568,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="telegram" onclick="openRobotEditor('telegram')">
+                                        <button type="button" class="robot-card" data-robot-card="telegram" data-require-permission="robot:write" onclick="openRobotEditor('telegram')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.telegram.title">Telegram</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.telegram.subtitle">Bot API 长轮询，私聊与群聊 @</span>
@@ -3578,7 +3578,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="slack" onclick="openRobotEditor('slack')">
+                                        <button type="button" class="robot-card" data-robot-card="slack" data-require-permission="robot:write" onclick="openRobotEditor('slack')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.slack.title">Slack</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.slack.subtitle">Socket Mode，无需公网回调</span>
@@ -3588,7 +3588,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="discord" onclick="openRobotEditor('discord')">
+                                        <button type="button" class="robot-card" data-robot-card="discord" data-require-permission="robot:write" onclick="openRobotEditor('discord')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.discord.title">Discord</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.discord.subtitle">Gateway WebSocket，私聊与服务器 @</span>
@@ -3598,7 +3598,7 @@
                                                 <span class="robot-card-action" data-i18n="settings.robots.configure">配置</span>
                                             </span>
                                         </button>
-                                        <button type="button" class="robot-card" data-robot-card="qq" onclick="openRobotEditor('qq')">
+                                        <button type="button" class="robot-card" data-robot-card="qq" data-require-permission="robot:write" onclick="openRobotEditor('qq')">
                                             <span class="robot-card-main">
                                                 <span class="robot-card-title" data-i18n="settings.robots.qq.title">QQ 机器人</span>
                                                 <span class="robot-card-desc" data-i18n="settings.robots.qq.subtitle">QQ 开放平台 WebSocket，C2C 与群 @</span>
@@ -3634,7 +3634,7 @@
                                             </label>
                                         </div>
                                         <div class="robot-wechat-action-row">
-                                            <button type="button" class="btn-primary" id="robot-wechat-bind-btn" onclick="startWechatRobotBind()" data-i18n="settings.robots.wechat.bindButton">生成二维码并绑定</button>
+                                            <button type="button" class="btn-primary" data-require-permission="robot:write" id="robot-wechat-bind-btn" onclick="startWechatRobotBind()" data-i18n="settings.robots.wechat.bindButton">生成二维码并绑定</button>
                                             <p class="robot-wechat-hint" id="robot-wechat-bind-hint" data-i18n="settings.robots.wechat.bindHint">用微信扫码确认后会自动保存并启用。</p>
                                         </div>
                                         <div id="robot-wechat-bound-flash" class="robot-wechat-bound-flash" hidden role="status">
@@ -3663,7 +3663,7 @@
                                                 <label for="robot-wechat-verify-code" data-i18n="settings.robots.wechat.verifyCodeLabel">手机显示的数字（仅部分账号需要）</label>
                                                 <div class="robot-wechat-verify-row">
                                                     <input type="text" id="robot-wechat-verify-code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000" />
-                                                    <button type="button" class="btn-primary btn-sm" onclick="submitWechatVerifyCode()" data-i18n="settings.robots.wechat.verifyCodeSubmit">提交</button>
+                                                    <button type="button" class="btn-primary btn-sm" data-require-permission="robot:write" onclick="submitWechatVerifyCode()" data-i18n="settings.robots.wechat.verifyCodeSubmit">提交</button>
                                                 </div>
                                             </div>
                                             </div>
@@ -3982,7 +3982,7 @@
                                 </div>
 
                                 <div class="settings-actions">
-                                    <button class="btn-primary" onclick="applySettings()" data-i18n="settings.apply.button">应用配置</button>
+                                    <button class="btn-primary" onclick="applySettings()" data-require-permission="config:write" data-i18n="settings.apply.button">应用配置</button>
                                 </div>
                             </div>
 
@@ -4101,8 +4101,8 @@
                                                     <span class="audit-export-caret" aria-hidden="true">▾</span>
                                                 </button>
                                                 <div id="audit-export-menu" class="audit-export-menu" role="menu" hidden>
-                                                    <button type="button" class="audit-export-menu-item" role="menuitem" onclick="runAuditExport('json')" data-i18n="settingsAudit.exportJson">导出 JSON</button>
-                                                    <button type="button" class="audit-export-menu-item" role="menuitem" onclick="runAuditExport('csv')" data-i18n="settingsAudit.exportCsv">导出 CSV</button>
+                                                    <button type="button" class="audit-export-menu-item" role="menuitem" data-require-permission="audit:read" onclick="runAuditExport('json')" data-i18n="settingsAudit.exportJson">导出 JSON</button>
+                                                    <button type="button" class="audit-export-menu-item" role="menuitem" data-require-permission="audit:read" onclick="runAuditExport('csv')" data-i18n="settingsAudit.exportCsv">导出 CSV</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -4137,7 +4137,7 @@
                                         </div>
                                         <div class="form-actions">
                                             <button class="btn-secondary" type="button" onclick="resetPasswordForm()" data-i18n="settingsSecurity.clear">清空</button>
-                                            <button class="btn-primary change-password-submit" type="button" onclick="changePassword()" data-i18n="settingsSecurity.changePasswordBtn">修改密码</button>
+                                            <button class="btn-primary change-password-submit" type="button" data-require-permission="auth:self" onclick="changePassword()" data-i18n="settingsSecurity.changePasswordBtn">修改密码</button>
                                         </div>
                                     </div>
                                 </div>
@@ -4214,7 +4214,7 @@
                                                     <p id="rbac-selected-subtitle" class="rbac-muted" data-i18n="rbac.selectUserHint">选择一个平台用户后编辑角色、状态与资源授权。</p>
                                                 </div>
                                                 <div class="rbac-detail-actions">
-                                                    <button class="btn-secondary btn-small btn-delete" type="button" id="rbac-delete-user-btn" onclick="deleteSelectedRbacUser()" disabled data-i18n="common.delete">删除</button>
+                                                    <button class="btn-secondary btn-small btn-delete" data-require-permission="rbac:write" type="button" id="rbac-delete-user-btn" onclick="deleteSelectedRbacUser()" disabled data-i18n="common.delete">删除</button>
                                                     <button class="btn-primary btn-small" type="button" id="rbac-edit-user-btn" onclick="openRbacUserModalForSelected()" disabled data-i18n="common.edit">编辑</button>
                                                 </div>
                                             </div>
@@ -4235,7 +4235,7 @@
                                                     <div class="rbac-role-save-actions">
                                                         <span id="rbac-role-unsaved" class="rbac-unsaved-indicator" hidden data-i18n="rbac.unsavedChanges">有未保存的变更</span>
                                                         <button id="rbac-role-reset-btn" class="btn-secondary btn-small" type="button" onclick="resetSelectedUserRoles()" disabled data-i18n="common.cancel">取消</button>
-                                                        <button id="rbac-role-apply-btn" class="btn-primary btn-small" type="button" onclick="saveSelectedUserRoles()" disabled data-i18n="rbac.saveRoleChanges">保存角色变更</button>
+                                                        <button id="rbac-role-apply-btn" class="btn-primary btn-small" data-require-permission="rbac:write" type="button" onclick="saveSelectedUserRoles()" disabled data-i18n="rbac.saveRoleChanges">保存角色变更</button>
                                                     </div>
                                                 </div>
                                                 <div id="rbac-roles-list" class="rbac-role-grid"></div>
@@ -4278,7 +4278,7 @@
                                                     <div id="rbac-pending-list" class="rbac-pending-list"></div>
                                                     <div class="rbac-pending-bar-actions">
                                                         <button type="button" class="btn-secondary btn-small" onclick="clearRbacResourceSelection()" data-i18n="rbac.clearSelection">清空选择</button>
-                                                        <button type="button" class="btn-primary btn-small" onclick="createRbacAssignment()" data-i18n="rbac.confirmGrant">确认授权</button>
+                                                        <button type="button" class="btn-primary btn-small" data-require-permission="rbac:write" onclick="createRbacAssignment()" data-i18n="rbac.confirmGrant">确认授权</button>
                                                     </div>
                                                 </div>
                                                 <div class="rbac-assignment-columns">
@@ -4529,7 +4529,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeExternalMCPModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" onclick="saveExternalMCP()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="mcp:write" onclick="saveExternalMCP()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -4540,7 +4540,7 @@
             <div class="modal-header">
                 <h2 data-i18n="attackChainModal.title">攻击链可视化</h2>
                 <div class="modal-header-actions">
-                    <button class="btn-primary attack-chain-action-btn" onclick="regenerateAttackChain()" data-i18n="attackChainModal.regenerateTitle" data-i18n-attr="title" data-i18n-skip-text="true" title="重新生成攻击链（包含最新对话内容）">
+                    <button class="btn-primary attack-chain-action-btn" data-require-permission="attackchain:write" onclick="regenerateAttackChain()" data-i18n="attackChainModal.regenerateTitle" data-i18n-attr="title" data-i18n-skip-text="true" title="重新生成攻击链（包含最新对话内容）">
                         <span data-i18n="attackChainModal.regenerate">重新生成</span>
                     </button>
                     <button class="btn-secondary attack-chain-action-btn" onclick="exportAttackChain('png')" data-i18n="attackChainModal.exportPng" data-i18n-attr="title" title="导出为PNG">
@@ -4657,7 +4657,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeChatFilesEditModal()" data-i18n="common.cancel">取消</button>
-                <button type="button" class="btn-primary" onclick="saveChatFilesEdit()" data-i18n="common.save">保存</button>
+                <button type="button" class="btn-primary" data-require-permission="files:write" onclick="saveChatFilesEdit()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -4818,7 +4818,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeSkillModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" onclick="saveSkill()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="skills:write" onclick="saveSkill()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -4845,7 +4845,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeKnowledgeItemModal()">取消</button>
-                <button class="btn-primary" onclick="saveKnowledgeItem()">保存</button>
+                <button class="btn-primary" data-require-permission="knowledge:write" onclick="saveKnowledgeItem()">保存</button>
             </div>
         </div>
     </div>
@@ -4898,7 +4898,7 @@
                 </div>
                 <div class="batch-footer-actions">
                     <button class="btn-secondary" onclick="closeBatchManageModal()" data-i18n="common.cancel">取消</button>
-                    <button class="btn-primary" onclick="deleteSelectedConversations()" data-i18n="batchManageModal.deleteSelected">删除所选</button>
+                    <button class="btn-primary" data-require-permission="chat:delete" onclick="deleteSelectedConversations()" data-i18n="batchManageModal.deleteSelected">删除所选</button>
                 </div>
             </div>
         </div>
@@ -4962,7 +4962,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeCreateGroupModal()" data-i18n="createGroupModal.cancel">取消</button>
-                <button class="btn-primary" onclick="createGroup(event)" data-i18n="createGroupModal.create">创建</button>
+                <button class="btn-primary" data-require-permission="group:write" onclick="createGroup(event)" data-i18n="createGroupModal.create">创建</button>
             </div>
         </div>
     </div>
@@ -5036,7 +5036,7 @@
             <div id="move-to-group-submenu" class="context-submenu" style="display: none;" onmouseenter="clearSubmenuHideTimeout()" onmouseleave="hideMoveToGroupSubmenu()"></div>
         </div>
         <div class="context-menu-divider"></div>
-        <div class="context-menu-item context-menu-item-danger" onclick="deleteConversationFromContext()">
+        <div class="context-menu-item context-menu-item-danger" data-require-permission="chat:delete" onclick="deleteConversationFromContext()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -5059,7 +5059,7 @@
             </svg>
             <span id="pin-group-menu-text" data-i18n="contextMenu.pinGroup">置顶此分组</span>
         </div>
-        <div class="context-menu-item context-menu-item-danger" onclick="deleteGroupFromContext()">
+        <div class="context-menu-item context-menu-item-danger" data-require-permission="group:delete" onclick="deleteGroupFromContext()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -5069,14 +5069,14 @@
 
     <!-- 项目列表操作菜单 -->
     <div id="projects-list-action-menu" class="context-menu" style="display: none;" role="menu">
-        <div id="projects-list-menu-edit" class="context-menu-item" onclick="editProjectFromListMenu()">
+        <div id="projects-list-menu-edit" class="context-menu-item" data-require-permission="project:write" onclick="editProjectFromListMenu()">
             <span id="projects-list-menu-edit-text"></span>
         </div>
-        <div id="projects-list-menu-archive" class="context-menu-item" onclick="toggleProjectArchiveFromListMenu()">
+        <div id="projects-list-menu-archive" class="context-menu-item" data-require-permission="project:write" onclick="toggleProjectArchiveFromListMenu()">
             <span id="projects-list-menu-archive-text"></span>
         </div>
         <div class="context-menu-divider"></div>
-        <div class="context-menu-item context-menu-item-danger" onclick="deleteProjectFromListMenu()">
+        <div class="context-menu-item context-menu-item-danger" data-require-permission="project:delete" onclick="deleteProjectFromListMenu()">
             <span id="projects-list-menu-delete-text"></span>
         </div>
     </div>
@@ -5154,7 +5154,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeBatchImportModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" onclick="createBatchQueue()" data-i18n="batchImportModal.createQueue">创建队列</button>
+                <button class="btn-primary" data-require-permission="tasks:write" onclick="createBatchQueue()" data-i18n="batchImportModal.createQueue">创建队列</button>
             </div>
         </div>
     </div>
@@ -5166,11 +5166,11 @@
                 <h2 id="batch-queue-detail-title" data-i18n="batchQueueDetailModal.title">批量任务队列详情</h2>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div class="modal-header-actions">
-                        <button class="btn-secondary btn-small" id="batch-queue-add-task-btn" onclick="showAddBatchTaskModal()" style="display: none;" data-i18n="batchQueueDetailModal.addTask">添加任务</button>
-                        <button class="btn-primary btn-small" id="batch-queue-start-btn" onclick="startBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.startExecute">开始执行</button>
-                        <button class="btn-primary btn-small" id="batch-queue-rerun-btn" onclick="rerunBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.rerunQueue">重跑一轮</button>
-                        <button class="btn-secondary btn-small" id="batch-queue-pause-btn" onclick="pauseBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.pauseQueue">暂停队列</button>
-                        <button class="btn-secondary btn-small btn-danger" id="batch-queue-delete-btn" onclick="deleteBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.deleteQueue">删除队列</button>
+                        <button class="btn-secondary btn-small" data-require-permission="tasks:write" id="batch-queue-add-task-btn" onclick="showAddBatchTaskModal()" style="display: none;" data-i18n="batchQueueDetailModal.addTask">添加任务</button>
+                        <button class="btn-primary btn-small" data-require-permission="tasks:write" id="batch-queue-start-btn" onclick="startBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.startExecute">开始执行</button>
+                        <button class="btn-primary btn-small" data-require-permission="tasks:write" id="batch-queue-rerun-btn" onclick="rerunBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.rerunQueue">重跑一轮</button>
+                        <button class="btn-secondary btn-small" data-require-permission="tasks:write" id="batch-queue-pause-btn" onclick="pauseBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.pauseQueue">暂停队列</button>
+                        <button class="btn-secondary btn-small btn-danger" data-require-permission="tasks:delete" id="batch-queue-delete-btn" onclick="deleteBatchQueue()" style="display: none;" data-i18n="batchQueueDetailModal.deleteQueue">删除队列</button>
                     </div>
                     <span class="modal-close" onclick="closeBatchQueueDetailModal()">&times;</span>
                 </div>
@@ -5194,7 +5194,7 @@
                     <textarea id="add-task-message" class="form-control" rows="5" data-i18n="addBatchTaskModal.taskMessagePlaceholder" data-i18n-attr="placeholder" placeholder="请输入任务消息"></textarea>
                 </div>
                 <div class="form-actions">
-                    <button class="btn-primary" onclick="saveAddBatchTask()" data-i18n="addBatchTaskModal.add">添加</button>
+                    <button class="btn-primary" data-require-permission="tasks:write" onclick="saveAddBatchTask()" data-i18n="addBatchTaskModal.add">添加</button>
                     <button class="btn-secondary" onclick="closeAddBatchTaskModal()" data-i18n="common.cancel">取消</button>
                 </div>
             </div>
@@ -5292,7 +5292,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeVulnerabilityModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" onclick="saveVulnerability()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="vulnerability:write" onclick="saveVulnerability()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -5362,7 +5362,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn-secondary" id="webshell-test-btn" onclick="testWebshellConnection()" data-i18n="webshell.testConnectivity">测试连通性</button>
                 <button class="btn-secondary" onclick="closeWebshellModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" onclick="saveWebshellConnection()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="webshell:write" onclick="saveWebshellConnection()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -5470,7 +5470,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeRoleModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" onclick="saveRole()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="roles:write" onclick="saveRole()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -5515,7 +5515,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" type="button" onclick="closeRbacUserModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" type="button" onclick="saveRbacUser()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="rbac:write" type="button" onclick="saveRbacUser()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -5557,7 +5557,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" type="button" onclick="closeRbacRoleModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" id="rbac-role-save-btn" type="button" onclick="saveRbacRole()" data-i18n="common.save">保存</button>
+                <button class="btn-primary" data-require-permission="rbac:write" id="rbac-role-save-btn" type="button" onclick="saveRbacRole()" data-i18n="common.save">保存</button>
             </div>
         </div>
     </div>
@@ -5587,7 +5587,7 @@
             </div>
             <div class="projects-modal-footer">
                 <button class="btn-secondary" type="button" onclick="closeProjectModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" type="button" id="project-modal-submit-btn" onclick="saveProjectModal()" data-i18n="projects.createProject">创建项目</button>
+                <button class="btn-primary" data-require-permission="project:write" type="button" id="project-modal-submit-btn" onclick="saveProjectModal()" data-i18n="projects.createProject">创建项目</button>
             </div>
         </div>
     </div>
@@ -5664,7 +5664,7 @@
             </div>
             <div class="projects-modal-footer">
                 <button class="btn-secondary" type="button" onclick="closeFactModal()" data-i18n="common.cancel">取消</button>
-                <button class="btn-primary" type="button" id="fact-modal-submit-btn" onclick="saveFactModal()" data-i18n="projects.saveFact">保存事实</button>
+                <button class="btn-primary" data-require-permission="project:write" type="button" id="fact-modal-submit-btn" onclick="saveFactModal()" data-i18n="projects.saveFact">保存事实</button>
             </div>
         </div>
     </div>
@@ -5686,7 +5686,7 @@
             <div class="projects-modal-footer projects-modal-footer--split">
                 <div class="projects-modal-footer-left">
                     <button class="btn-secondary btn-small" type="button" id="fact-detail-link-vuln-btn" onclick="linkFactToExistingVulnerability()" hidden data-i18n="projects.linkVulnerability">关联漏洞</button>
-                    <button class="btn-secondary btn-small" type="button" id="fact-detail-create-vuln-btn" onclick="createVulnerabilityFromCurrentFact()" hidden data-i18n="projects.createVulnerabilityDraft">生成漏洞草稿</button>
+                    <button class="btn-secondary btn-small" data-require-permission="vulnerability:write" type="button" id="fact-detail-create-vuln-btn" onclick="createVulnerabilityFromCurrentFact()" hidden data-i18n="projects.createVulnerabilityDraft">生成漏洞草稿</button>
                 </div>
                 <div class="projects-modal-footer-right">
                     <button class="btn-secondary" type="button" onclick="closeFactDetailModal()" data-i18n="common.close">关闭</button>
@@ -5729,5 +5729,6 @@
     <script src="/static/js/roles.js"></script>
     <script src="/static/js/rbac.js"></script>
     <script src="/static/js/c2.js"></script>
+    <script src="/static/js/rbac-guards.js"></script>
 </body>
 </html>
