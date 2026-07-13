@@ -1,30 +1,32 @@
 # 中文文档
 
-- [部署指南](deployment.md)：部署形态、HTTPS、反向代理、systemd、备份、升级和验收。
-- [运维 Runbooks](runbooks.md)：生产部署、外部 MCP、知识库、Web 测试、C2 清理和工具排障的操作步骤。
-- [配置画像](configuration-profiles.md)：本地开发、内网团队、知识库、高审计生产、C2 演练等推荐配置。
-- [安全加固指南](security-hardening.md)：上线前基线、反向代理、HITL 白名单、文件权限和周期巡检。
-- [API Recipes](api-recipes.md)：登录、Agent、流式、多代理、上传、漏洞、知识库、MCP 和审计导出示例。
-- [贡献规范](contributing-guide.md)：新增 API、配置、工具、前端、数据库、高风险能力和文档的 checklist。
-- [配置参考](configuration.md)：`config.yaml` 字段、热应用边界、参数建议和源码锚点。
-- [安全模型](security-model.md)：信任边界、HITL、工具执行、C2/WebShell 与数据安全。
-- [RBAC 权限管理](rbac.md)：平台用户、系统/自定义角色、权限目录、逐权限 Scope、资源授权、Agent/MCP/机器人边界与 API 示例。
-- [架构说明](architecture.md)：请求路径、模块关系、复杂度热点和设计取舍。
-- [API 参考](api-reference.md)：认证、OpenAPI、SSE、稳定性分层和常用接口。
-- [排错指南](troubleshooting.md)：诊断顺序、最小命令、常见误判和故障模板。
-- [审计与监控](audit-and-monitoring.md)：平台审计、工具监控、HITL 日志和保留策略。
-- [知识库](knowledge-base.md)：索引链路、检索调参、日志分析和内容写法。
-- [C2 使用说明](c2.md)：生命周期、任务分级、事件复盘和安全建议。
-- [WebShell 管理](webshell.md)：操作分层、连接命名、AI 约束和排错。
-- [MCP 联邦](mcp-federation.md)：内置 MCP、外部 MCP、生命周期和工具命名。
-- [Agent 与角色](agent-and-role-guide.md)：角色、子代理、Skill、编排模式和工具可见性。
-- [Skills 指南](skills-guide.md)：Skill 结构、渐进式披露、反模式和本地工具风险。
-- [插件开发](plugin-development.md)：API 插件、MCP 插件、资源包插件和安全边界。
-- [发布流程](release-process.md)：发布风险、配置兼容、数据库迁移和验收。
-- [测试指南](testing.md)：测试分层、回归重点、测试数据和失败用例。
-- [图编排使用说明](workflow-graph.md)
-- [人机协同最佳实践](hitl-best-practices.md)
-- [机器人使用说明](robot.md)
-- [视觉分析](VISION.md)
-- [前端国际化方案](frontend-i18n.md)
-- [Eino 多代理改造说明](MULTI_AGENT_EINO.md)
+[文档首页](../README.md) | [English](../en-US/README.md)
+
+## 按目标开始
+
+- **快速体验**：[部署指南](deployment.md) → [配置参考](configuration.md) → [排错指南](troubleshooting.md)
+- **生产部署**：[配置画像](configuration-profiles.md) → [安全加固](security-hardening.md) → [运维 Runbooks](runbooks.md) → [审计与监控](audit-and-monitoring.md)
+- **接入与自动化**：[API 参考](api-reference.md) → [API Recipes](api-recipes.md) → [MCP 联邦](mcp-federation.md)
+- **参与开发**：[开发者指南](developer-guide.md) → [测试指南](testing.md) → [贡献规范](contributing-guide.md)
+
+## 核心概念与编排
+
+- [架构说明](architecture.md) · [安全模型](security-model.md) · [RBAC](rbac.md)
+- [Agent 与角色](agent-and-role-guide.md) · [Skills](skills-guide.md) · [Eino 多代理](MULTI_AGENT_EINO.md)
+- [图编排](workflow-graph.md) · [人机协同最佳实践](hitl-best-practices.md)
+
+## 功能指南
+
+- [知识库](knowledge-base.md) · [机器人接入](robot.md) · [视觉分析](VISION.md)
+- [WebShell](webshell.md) · [C2](c2.md) · [MCP 联邦](mcp-federation.md)
+
+## 运维与参考
+
+- [部署指南](deployment.md) · [配置参考](configuration.md) · [配置画像](configuration-profiles.md)
+- [安全加固](security-hardening.md) · [审计与监控](audit-and-monitoring.md) · [运维 Runbooks](runbooks.md)
+- [API 参考](api-reference.md) · [API Recipes](api-recipes.md) · [排错指南](troubleshooting.md)
+
+## 开发与发布
+
+- [开发者指南](developer-guide.md) · [插件开发](plugin-development.md) · [前端国际化](frontend-i18n.md)
+- [测试指南](testing.md) · [贡献规范](contributing-guide.md) · [发布流程](release-process.md)

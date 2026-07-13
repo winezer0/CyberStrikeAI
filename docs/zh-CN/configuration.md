@@ -5,7 +5,7 @@ CyberStrikeAI 的主配置文件是 `config.yaml`。大多数配置也可以在 
 ## 基础配置
 
 ```yaml
-version: "v1.6.51"
+version: "vX.Y.Z" # 占位符；请使用 config.example.yaml 中当前发布版本的值
 server:
   host: 0.0.0.0
   port: 8080
@@ -22,7 +22,6 @@ log:
 - `server.host/port`：Web 服务监听地址和端口。
 - `server.tls_*`：HTTPS 配置。生产环境建议使用 `tls_cert_path` 和 `tls_key_path`。
 - `auth.session_duration_hours`：登录会话有效期（小时）。登录密码由 RBAC 用户管理，首次启动时在控制台输出 `admin` 初始密码。
-- `auth.session_duration_hours`：登录会话有效期。
 - `log.output`：可以是 `stdout`、`stderr` 或文件路径。
 
 ## 模型配置

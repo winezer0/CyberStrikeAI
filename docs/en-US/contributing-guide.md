@@ -103,6 +103,14 @@ Update:
 - `docs/zh-CN/README.md`
 - `docs/en-US/README.md`
 
+Before submitting documentation changes, run:
+
+```bash
+python3 scripts/check-docs.py
+```
+
+The check verifies local links, fenced code blocks, bilingual filename parity, locale index coverage, and the Go version documented by the root READMEs. Keep versioned examples derived from authoritative files such as `go.mod` and `config.example.yaml` whenever possible.
+
 ## Review Focus
 
 Prioritize:

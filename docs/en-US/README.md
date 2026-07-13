@@ -1,30 +1,32 @@
-# English Docs
+# English Documentation
 
-- [Deployment Guide](deployment.md): deployment modes, HTTPS, reverse proxy, systemd, backup, upgrade, and acceptance checks.
-- [Runbooks](runbooks.md): operational steps for production setup, external MCP, KB, Web testing, C2 cleanup, and tool debugging.
-- [Configuration Profiles](configuration-profiles.md): recommended profiles for dev, internal team, knowledge-only, production, C2, and MCP automation.
-- [Security Hardening](security-hardening.md): pre-launch baseline, reverse proxy, HITL allowlist, file permissions, and periodic review.
-- [API Recipes](api-recipes.md): examples for login, Agent, streaming, multi-agent, uploads, vulnerabilities, KB, MCP, and audit export.
-- [Contributing Guide](contributing-guide.md): checklists for APIs, config, tools, frontend, DB, high-risk features, and docs.
-- [Configuration Reference](configuration.md): `config.yaml` fields, hot-apply boundaries, recommended values, and source anchors.
-- [Security Model](security-model.md): trust boundaries, HITL, tool execution, C2/WebShell, and data safety.
-- [RBAC Administration](rbac.md): platform users, system/custom roles, permission catalog, per-permission scopes, resource assignments, Agent/MCP/robot boundaries, and API examples.
-- [Architecture](architecture.md): request flow, module relationships, complexity hotspots, and design trade-offs.
-- [API Reference](api-reference.md): authentication, OpenAPI, SSE, stability tiers, and common endpoints.
-- [Troubleshooting](troubleshooting.md): diagnostic order, minimal commands, common misdiagnoses, and issue template.
-- [Audit and Monitoring](audit-and-monitoring.md): platform audit, tool monitoring, HITL logs, and retention.
-- [Knowledge Base](knowledge-base.md): indexing pipeline, retrieval tuning, log analysis, and content writing.
-- [C2 Guide](c2.md): lifecycle, task classification, event review, and safety guidance.
-- [WebShell Management](webshell.md): operation tiers, naming, AI guardrails, and troubleshooting.
-- [MCP Federation](mcp-federation.md): built-in MCP, external MCP, lifecycle, and tool naming.
-- [Agent and Role Guide](agent-and-role-guide.md): roles, sub-agents, Skills, orchestration modes, and tool visibility.
-- [Skills Guide](skills-guide.md): Skill structure, progressive disclosure, anti-patterns, and local-tool risk.
-- [Plugin Development](plugin-development.md): API plugins, MCP plugins, resource-pack plugins, and security boundaries.
-- [Release Process](release-process.md): release risk, config compatibility, DB migrations, and acceptance checks.
-- [Testing Guide](testing.md): test layers, regression focus, test data, and failure cases.
-- [Graph Orchestration Guide](workflow-graph.md)
-- [HITL Best Practices](hitl-best-practices.md)
-- [Robot / Chatbot Guide](robot.md)
-- [Vision Analysis](VISION.md)
-- [Frontend i18n](frontend-i18n.md)
-- [Eino Multi-Agent Notes](MULTI_AGENT_EINO.md)
+[Documentation home](../README.md) | [中文](../zh-CN/README.md)
+
+## Choose a path
+
+- **Try locally**: [Deployment](deployment.md) → [Configuration](configuration.md) → [Troubleshooting](troubleshooting.md)
+- **Run in production**: [Configuration Profiles](configuration-profiles.md) → [Security Hardening](security-hardening.md) → [Runbooks](runbooks.md) → [Audit and Monitoring](audit-and-monitoring.md)
+- **Integrate and automate**: [API Reference](api-reference.md) → [API Recipes](api-recipes.md) → [MCP Federation](mcp-federation.md)
+- **Contribute code**: [Developer Guide](developer-guide.md) → [Testing](testing.md) → [Contributing](contributing-guide.md)
+
+## Concepts and orchestration
+
+- [Architecture](architecture.md) · [Security Model](security-model.md) · [RBAC](rbac.md)
+- [Agents and Roles](agent-and-role-guide.md) · [Skills](skills-guide.md) · [Eino Multi-Agent](MULTI_AGENT_EINO.md)
+- [Graph Orchestration](workflow-graph.md) · [HITL Best Practices](hitl-best-practices.md)
+
+## Feature guides
+
+- [Knowledge Base](knowledge-base.md) · [Robot / Chatbot](robot.md) · [Vision](VISION.md)
+- [WebShell](webshell.md) · [C2](c2.md) · [MCP Federation](mcp-federation.md)
+
+## Operations and reference
+
+- [Deployment](deployment.md) · [Configuration](configuration.md) · [Configuration Profiles](configuration-profiles.md)
+- [Security Hardening](security-hardening.md) · [Audit and Monitoring](audit-and-monitoring.md) · [Runbooks](runbooks.md)
+- [API Reference](api-reference.md) · [API Recipes](api-recipes.md) · [Troubleshooting](troubleshooting.md)
+
+## Development and release
+
+- [Developer Guide](developer-guide.md) · [Plugin Development](plugin-development.md) · [Frontend i18n](frontend-i18n.md)
+- [Testing](testing.md) · [Contributing](contributing-guide.md) · [Release Process](release-process.md)
