@@ -26,6 +26,18 @@
     const WORKFLOW_TOOL_SELECT_ID = 'workflow-tool-name';
     let workflowToolSelectRegistry = null;
     let workflowToolSelectDocBound = false;
+    const workflowPackageState = {
+        file: null,
+        inspection: null,
+        importRecord: null,
+        resolutionAction: '',
+        newWorkflowId: '',
+        riskChoicesVisible: false,
+        idempotencyKey: '',
+        requestSignature: ''
+    };
+    const WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY = 'csai.workflow-package.inspection-id';
+    const WORKFLOW_PACKAGE_IMPORT_STORAGE_KEY = 'csai.workflow-package.import-id';
 
     const KNOWN_NODE_LABELS = {
         start: ['开始', 'Start'],
@@ -1863,6 +1875,427 @@
         }
     };
 
+    function workflowPackageClient() {
+        return window.WorkflowPackageClient || null;
+    }
+
+    function workflowPackageText(key, fallback, opts) {
+        const translated = _t(key, opts);
+        return translated === key ? fallback : translated;
+    }
+
+    function workflowPackageStorageGet(key) {
+        try { return window.sessionStorage.getItem(key) || ''; } catch (_) { return ''; }
+    }
+
+    function workflowPackageStorageSet(key, value) {
+        try {
+            if (value) window.sessionStorage.setItem(key, value);
+            else window.sessionStorage.removeItem(key);
+        } catch (_) { /* session restore is best effort */ }
+    }
+
+    function workflowPackageInspectionEl() {
+        return document.getElementById('workflow-package-inspection');
+    }
+
+    function workflowPackageResolutionEl() {
+        return document.getElementById('workflow-package-resolution');
+    }
+
+    function workflowPackageSubmitBtn() {
+        return document.getElementById('workflow-package-submit-btn');
+    }
+
+    function workflowPackageSetStep(step) {
+        const inspectionStep = document.getElementById('workflow-package-step-inspection');
+        const importStep = document.getElementById('workflow-package-step-import');
+        if (inspectionStep) inspectionStep.classList.toggle('is-active', step === 'inspection');
+        if (importStep) importStep.classList.toggle('is-active', step === 'import');
+    }
+
+    function workflowPackageSetStatus(target, message, type) {
+        if (!target) return;
+        target.innerHTML = `<div class="workflow-package-status${type ? ' is-' + esc(type) : ''}">${esc(message)}</div>`;
+    }
+
+    function workflowPackageErrorMessage(error) {
+        const code = error && error.code ? error.code : '';
+        const errorKeys = {
+            WFPKG_FILE_REQUIRED: 'fileRequired',
+            WFPKG_FILE_TOO_LARGE: 'fileTooLarge',
+            WFPKG_INVALID_ARCHIVE: 'invalidArchive',
+            WFPKG_UNSUPPORTED_FORMAT: 'unsupportedFormat',
+            WFPKG_INVALID_MANIFEST: 'invalidManifest',
+            WFPKG_CHECKSUM_MISMATCH: 'checksumMismatch',
+            WFPKG_MULTIPLE_WORKFLOWS: 'multipleWorkflows',
+            WFPKG_WORKFLOW_INVALID: 'workflowInvalid',
+            WFPKG_INSPECTION_NOT_FOUND: 'inspectionNotFound',
+            WFPKG_INSPECTION_EXPIRED: 'inspectionExpired',
+            WFPKG_INSPECTION_CONSUMED: 'inspectionConsumed',
+            WFPKG_CONFLICT_CHANGED: 'conflictChanged',
+            WFPKG_ID_CONFLICT: 'idConflict',
+            WFPKG_INVALID_ACTION: 'invalidAction',
+            WFPKG_INVALID_RENAME_ID: 'invalidRenameId',
+            WFPKG_OVERWRITE_CONFIRMATION_REQUIRED: 'overwriteConfirmationRequired',
+            WFPKG_IDEMPOTENCY_KEY_REQUIRED: 'idempotencyKeyRequired',
+            WFPKG_IDEMPOTENCY_KEY_REUSED: 'idempotencyKeyReused',
+            WFPKG_IMPORT_FAILED: 'importFailed',
+            WFPKG_EXPORT_FAILED: 'exportFailed',
+            WFPKG_WORKFLOW_NOT_FOUND: 'workflowNotFound'
+        };
+        const key = errorKeys[code];
+        if (key) return workflowPackageText('workflows.package.errors.' + key, '操作未完成，请稍后重试。');
+        return (error && error.message) || workflowPackageText('workflows.package.errors.generic', '操作未完成，请稍后重试。');
+    }
+
+    function workflowPackageConflictCopy(conflict) {
+        const state = (conflict && conflict.state) || 'none';
+        if (state === 'identical') return { message: workflowPackageText('workflows.package.conflict.identical', '检测到同 ID 且内容相同的本地工作流；本次将跳过导入。'), type: 'success' };
+        if (state === 'id_conflict') return { message: workflowPackageText('workflows.package.conflict.idConflict', '检测到同 ID 但内容不同的本地工作流。默认保留本地版本。'), type: 'warning' };
+        return { message: workflowPackageText('workflows.package.conflict.none', '未发现同 ID 的本地工作流，可创建导入。'), type: 'success' };
+    }
+
+    function renderWorkflowPackageInspection() {
+        const target = workflowPackageInspectionEl();
+        const inspection = workflowPackageState.inspection;
+        if (!inspection) {
+            if (target) target.innerHTML = '';
+            return;
+        }
+        const workflow = inspection.workflow || {};
+        const conflict = inspection.conflict || {};
+        const conflictCopy = workflowPackageConflictCopy(conflict);
+        const rows = [
+            [workflowPackageText('workflows.package.summary.workflowName', '工作流名称'), workflow.name || workflowPackageText('workflows.package.summary.unnamedWorkflow', '未命名工作流')],
+            [workflowPackageText('workflows.package.summary.sourceId', '源工作流 ID'), workflow.source_id || '—'],
+            [workflowPackageText('workflows.package.summary.sourceRevision', '源版本'), workflow.source_revision || '—'],
+            [workflowPackageText('workflows.package.summary.graphSize', '图规模'), workflowPackageText('workflows.package.summary.graphSizeValue', `${workflow.node_count || 0} 个节点 · ${workflow.edge_count || 0} 条连线`, { nodes: workflow.node_count || 0, edges: workflow.edge_count || 0 })],
+            [workflowPackageText('workflows.package.summary.contentHash', '内容摘要'), workflow.content_hash || '—'],
+            [workflowPackageText('workflows.package.summary.expiresAt', '预检有效期'), inspection.expires_at || '—']
+        ];
+        if (!target) return;
+        target.innerHTML = `<div class="workflow-package-status is-${conflictCopy.type}">${esc(conflictCopy.message)}</div>` + rows.map(function (row) {
+            return `<div class="workflow-package-summary-row"><span>${esc(row[0])}</span><code title="${esc(row[1])}">${esc(row[1])}</code></div>`;
+        }).join('');
+    }
+
+    function workflowPackageResolutionCard(action, title, description, selected) {
+        return `<label class="workflow-package-choice${selected ? ' is-selected' : ''}">
+            <input type="radio" name="workflow-package-resolution-action" value="${esc(action)}" ${selected ? 'checked' : ''} onchange="selectWorkflowPackageResolution('${esc(action)}')">
+            <span><strong>${esc(title)}</strong><small>${esc(description)}</small></span>
+        </label>`;
+    }
+
+    function renderWorkflowPackageResolution(message, type) {
+        const target = workflowPackageResolutionEl();
+        const submit = workflowPackageSubmitBtn();
+        const inspection = workflowPackageState.inspection;
+        if (!inspection) {
+            if (target) workflowPackageSetStatus(target, message || workflowPackageText('workflows.package.resolution.needInspection', '请先选择本地包并完成预检。'), type || '');
+            if (submit) submit.disabled = true;
+            return;
+        }
+        const client = workflowPackageClient();
+        const conflictState = (inspection.conflict && inspection.conflict.state) || 'none';
+        const allowed = client ? client.allowedActions(conflictState) : [];
+        if (allowed.indexOf(workflowPackageState.resolutionAction) === -1) {
+            workflowPackageState.resolutionAction = conflictState === 'none' ? 'create' : 'keep_existing';
+        }
+        const action = workflowPackageState.resolutionAction;
+        let html = '';
+        if (message) html += `<div class="workflow-package-status${type ? ' is-' + esc(type) : ''}">${esc(message)}</div>`;
+        if (conflictState === 'none') {
+            html += `<div class="workflow-package-status is-success">${esc(workflowPackageText('workflows.package.resolution.createHint', '导入后会创建一个新的本地工作流。'))}</div>`;
+        } else if (conflictState === 'identical') {
+            html += `<div class="workflow-package-status is-success">${esc(workflowPackageText('workflows.package.resolution.identicalHint', '内容已经存在，无需重复导入。'))}</div>`;
+        } else {
+            html += workflowPackageResolutionCard('keep_existing', workflowPackageText('workflows.package.resolution.keepExisting', '保留本地版本'), workflowPackageText('workflows.package.resolution.keepExistingHint', '不修改当前本地工作流；导入记录会保留。'), action === 'keep_existing');
+            if (!workflowPackageState.riskChoicesVisible) {
+                html += `<button type="button" class="workflow-package-reveal" onclick="revealWorkflowPackageRiskChoices()">${esc(workflowPackageText('workflows.package.resolution.revealRiskChoices', '更改处理方式'))}</button>`;
+            } else {
+                html += workflowPackageResolutionCard('overwrite', workflowPackageText('workflows.package.resolution.overwrite', '覆盖本地版本'), workflowPackageText('workflows.package.resolution.overwriteHint', '替换名称、描述、图定义和启用状态；需要再次确认。'), action === 'overwrite');
+                html += workflowPackageResolutionCard('rename', workflowPackageText('workflows.package.resolution.rename', '另存为新 ID'), workflowPackageText('workflows.package.resolution.renameHint', '保留当前本地工作流，并以新的 ID 创建副本。'), action === 'rename');
+                if (action === 'rename') {
+                    html += `<label class="workflow-package-rename-field">${esc(workflowPackageText('workflows.package.resolution.newWorkflowId', '新的工作流 ID'))}<input id="workflow-package-new-id" class="form-input" type="text" value="${esc(workflowPackageState.newWorkflowId)}" placeholder="${esc(workflowPackageText('workflows.package.resolution.newWorkflowIdPlaceholder', '例如：web-scan-basic-copy'))}" oninput="updateWorkflowPackageRenameId()" autocomplete="off"></label>`;
+                }
+            }
+        }
+        if (target) target.innerHTML = html;
+        if (submit) {
+            const renameIncomplete = action === 'rename' && !workflowPackageState.newWorkflowId.trim();
+            submit.disabled = !action || renameIncomplete;
+            if (action === 'overwrite') submit.textContent = workflowPackageText('workflows.package.resolution.continueOverwrite', '继续确认覆盖');
+            else if (action === 'rename') submit.textContent = workflowPackageText('workflows.package.resolution.confirmRename', '确认另存');
+            else submit.textContent = action === 'create' ? workflowPackageText('workflows.package.resolution.confirmCreate', '确认创建') : workflowPackageText('workflows.package.resolution.confirmComplete', '确认完成');
+        }
+        workflowPackageSetStep('import');
+    }
+
+    function resetWorkflowPackageImport(options) {
+        const keepInspection = options && options.keepInspection;
+        workflowPackageState.file = null;
+        workflowPackageState.importRecord = null;
+        workflowPackageState.newWorkflowId = '';
+        workflowPackageState.riskChoicesVisible = false;
+        workflowPackageState.idempotencyKey = '';
+        workflowPackageState.requestSignature = '';
+        if (!keepInspection) {
+            workflowPackageState.inspection = null;
+            workflowPackageState.resolutionAction = '';
+            workflowPackageStorageSet(WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY, '');
+        }
+        workflowPackageStorageSet(WORKFLOW_PACKAGE_IMPORT_STORAGE_KEY, '');
+        const input = document.getElementById('workflow-package-file-input');
+        const name = document.getElementById('workflow-package-file-name');
+        if (input) input.value = '';
+        if (name) name.textContent = workflowPackageText('workflows.package.noFile', '未选择文件');
+    }
+
+    function displayWorkflowPackageError(error) {
+        const message = workflowPackageErrorMessage(error);
+        if (error && (error.code === 'WFPKG_INSPECTION_EXPIRED' || error.code === 'WFPKG_CONFLICT_CHANGED' || error.code === 'WFPKG_INSPECTION_CONSUMED')) {
+            workflowPackageState.inspection = null;
+            workflowPackageState.resolutionAction = '';
+            workflowPackageStorageSet(WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY, '');
+            workflowPackageSetStep('inspection');
+            renderWorkflowPackageInspection();
+        }
+        renderWorkflowPackageResolution(message, 'warning');
+        if (typeof showNotification === 'function') showNotification(message, 'error');
+    }
+
+    function renderWorkflowPackageImportResult(importRecord) {
+        const result = importRecord && importRecord.result;
+        const resultKeys = {
+            created: 'created',
+            overwritten: 'overwritten',
+            renamed: 'renamed',
+            kept_existing: 'keptExisting',
+            skipped_identical: 'skippedIdentical'
+        };
+        const resultKey = resultKeys[result];
+        const message = resultKey
+            ? workflowPackageText('workflows.package.result.' + resultKey, '导入已完成。')
+            : workflowPackageText('workflows.package.result.complete', '导入已完成。');
+        renderWorkflowPackageResolution(message, result === 'kept_existing' || result === 'skipped_identical' ? '' : 'success');
+        const submit = workflowPackageSubmitBtn();
+        if (submit) {
+            submit.disabled = true;
+            submit.textContent = workflowPackageText('workflows.package.result.completedAction', '导入已完成');
+        }
+    }
+
+    async function restoreWorkflowPackageState() {
+        const client = workflowPackageClient();
+        if (!client || typeof apiFetch !== 'function') return;
+        const importId = workflowPackageStorageGet(WORKFLOW_PACKAGE_IMPORT_STORAGE_KEY);
+        if (importId) {
+            try {
+                const data = await client.getImport(apiFetch, importId);
+                workflowPackageState.importRecord = data.import || data;
+                renderWorkflowPackageImportResult(workflowPackageState.importRecord);
+                return;
+            } catch (_) {
+                workflowPackageStorageSet(WORKFLOW_PACKAGE_IMPORT_STORAGE_KEY, '');
+            }
+        }
+        const inspectionId = workflowPackageStorageGet(WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY);
+        if (!inspectionId) return;
+        try {
+            const data = await client.getInspection(apiFetch, inspectionId);
+            workflowPackageState.inspection = data.inspection || data;
+            renderWorkflowPackageInspection();
+            renderWorkflowPackageResolution();
+        } catch (error) {
+            workflowPackageStorageSet(WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY, '');
+            displayWorkflowPackageError(error);
+        }
+    }
+
+    window.openWorkflowPackageImportModal = async function () {
+        if (typeof requirePermission === 'function' && !requirePermission('workflow:write')) return;
+        resetWorkflowPackageImport();
+        renderWorkflowPackageInspection();
+        renderWorkflowPackageResolution();
+        workflowPackageSetStep('inspection');
+        if (typeof openAppModal === 'function') openAppModal('workflow-package-import-modal', { focusEl: document.getElementById('workflow-package-inspect-btn') });
+        if (typeof window.applyTranslations === 'function') window.applyTranslations(document.getElementById('workflow-package-import-modal'));
+    };
+
+    window.closeWorkflowPackageImportModal = function () {
+        if (typeof closeAppModal === 'function') closeAppModal('workflow-package-import-modal');
+        resetWorkflowPackageImport();
+    };
+
+    window.onWorkflowPackageFileSelected = function () {
+        const input = document.getElementById('workflow-package-file-input');
+        const name = document.getElementById('workflow-package-file-name');
+        const file = input && input.files ? input.files[0] : null;
+        resetWorkflowPackageImport();
+        workflowPackageState.file = file || null;
+        if (name) name.textContent = file ? file.name : workflowPackageText('workflows.package.noFile', '未选择文件');
+        renderWorkflowPackageResolution();
+        workflowPackageSetStep('inspection');
+    };
+
+    window.inspectWorkflowPackage = async function () {
+        if (typeof requirePermission === 'function' && !requirePermission('workflow:write')) return;
+        const client = workflowPackageClient();
+        const button = document.getElementById('workflow-package-inspect-btn');
+        if (!client || typeof apiFetch !== 'function') {
+            displayWorkflowPackageError({ code: 'WFPKG_REQUEST_FAILED', message: workflowPackageText('workflows.package.errors.serviceUnavailable', '导入服务尚未准备好，请刷新页面后重试。') });
+            return;
+        }
+        if (button) button.disabled = true;
+        try {
+            const data = await client.createInspection(apiFetch, workflowPackageState.file);
+            workflowPackageState.inspection = data.inspection || data;
+            workflowPackageState.importRecord = null;
+            workflowPackageState.riskChoicesVisible = false;
+            workflowPackageState.newWorkflowId = '';
+            workflowPackageState.resolutionAction = '';
+            workflowPackageStorageSet(WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY, workflowPackageState.inspection.id || '');
+            renderWorkflowPackageInspection();
+            renderWorkflowPackageResolution();
+        } catch (error) {
+            displayWorkflowPackageError(error);
+        } finally {
+            if (button) button.disabled = false;
+        }
+    };
+
+    window.revealWorkflowPackageRiskChoices = function () {
+        workflowPackageState.riskChoicesVisible = true;
+        renderWorkflowPackageResolution();
+    };
+
+    window.selectWorkflowPackageResolution = function (action) {
+        const client = workflowPackageClient();
+        const conflict = workflowPackageState.inspection && workflowPackageState.inspection.conflict;
+        const allowed = client ? client.allowedActions((conflict && conflict.state) || 'none') : [];
+        if (allowed.indexOf(action) === -1) return;
+        workflowPackageState.resolutionAction = action;
+        if (action !== 'rename') workflowPackageState.newWorkflowId = '';
+        renderWorkflowPackageResolution();
+    };
+
+    window.updateWorkflowPackageRenameId = function () {
+        const input = document.getElementById('workflow-package-new-id');
+        workflowPackageState.newWorkflowId = input ? input.value : '';
+        const submit = workflowPackageSubmitBtn();
+        if (submit) submit.disabled = !workflowPackageState.newWorkflowId.trim();
+    };
+
+    async function performWorkflowPackageImport(request) {
+        const client = workflowPackageClient();
+        const submit = workflowPackageSubmitBtn();
+        if (submit) submit.disabled = true;
+        try {
+            const signature = JSON.stringify(request);
+            if (!workflowPackageState.idempotencyKey || workflowPackageState.requestSignature !== signature) {
+                workflowPackageState.idempotencyKey = client.createIdempotencyKey();
+                workflowPackageState.requestSignature = signature;
+            }
+            const data = await client.applyImport(apiFetch, request, workflowPackageState.idempotencyKey);
+            workflowPackageState.importRecord = data.import || data;
+            workflowPackageStorageSet(WORKFLOW_PACKAGE_IMPORT_STORAGE_KEY, workflowPackageState.importRecord.id || '');
+            workflowPackageStorageSet(WORKFLOW_PACKAGE_INSPECTION_STORAGE_KEY, '');
+            workflowPackageState.inspection = null;
+            renderWorkflowPackageImportResult(workflowPackageState.importRecord);
+            if (typeof window.refreshWorkflows === 'function') await window.refreshWorkflows();
+        } catch (error) {
+            displayWorkflowPackageError(error);
+        } finally {
+            if (submit && !workflowPackageState.importRecord) submit.disabled = false;
+        }
+    }
+
+    window.submitWorkflowPackageImport = async function () {
+        const client = workflowPackageClient();
+        if (!client || !workflowPackageState.inspection) return;
+        if (workflowPackageState.resolutionAction === 'overwrite') {
+            const checkbox = document.getElementById('workflow-package-overwrite-confirm');
+            const submit = document.getElementById('workflow-package-overwrite-submit-btn');
+            if (checkbox) checkbox.checked = false;
+            if (submit) submit.disabled = true;
+            if (typeof openAppModal === 'function') openAppModal('workflow-package-overwrite-modal', { focusEl: checkbox });
+            return;
+        }
+        let request;
+        try {
+            request = client.buildImportRequest({
+                inspectionId: workflowPackageState.inspection.id,
+                action: workflowPackageState.resolutionAction,
+                newWorkflowId: workflowPackageState.newWorkflowId,
+                confirmOverwrite: false
+            });
+        } catch (error) {
+            displayWorkflowPackageError(error);
+            return;
+        }
+        await performWorkflowPackageImport(request);
+    };
+
+    window.closeWorkflowPackageOverwriteModal = function () {
+        if (typeof closeAppModal === 'function') closeAppModal('workflow-package-overwrite-modal');
+    };
+
+    window.updateWorkflowPackageOverwriteConfirmation = function () {
+        const checkbox = document.getElementById('workflow-package-overwrite-confirm');
+        const submit = document.getElementById('workflow-package-overwrite-submit-btn');
+        if (submit) submit.disabled = !checkbox || !checkbox.checked;
+    };
+
+    window.confirmWorkflowPackageOverwrite = async function () {
+        const checkbox = document.getElementById('workflow-package-overwrite-confirm');
+        const client = workflowPackageClient();
+        if (!client || !checkbox || !checkbox.checked || !workflowPackageState.inspection) return;
+        try {
+            const request = client.buildImportRequest({
+                inspectionId: workflowPackageState.inspection.id,
+                action: 'overwrite',
+                newWorkflowId: '',
+                confirmOverwrite: true
+            });
+            window.closeWorkflowPackageOverwriteModal();
+            await performWorkflowPackageImport(request);
+        } catch (error) {
+            displayWorkflowPackageError(error);
+        }
+    };
+
+    window.exportCurrentWorkflowPackage = async function () {
+        if (typeof requirePermission === 'function' && !requirePermission('workflow:read')) return;
+        const id = currentWorkflowId || readWorkflowMetaFromForm().id;
+        if (!id) {
+            if (typeof showNotification === 'function') showNotification(workflowPackageText('workflows.package.exportSelectSaved', '请先选择已保存的工作流后再导出。'), 'warning');
+            return;
+        }
+        try {
+            const response = await apiFetch(`/api/workflows/${encodeURIComponent(id)}/package`, { method: 'GET' });
+            if (!response.ok) {
+                const error = workflowPackageClient() ? await workflowPackageClient().readApiError(response) : {};
+                throw error;
+            }
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i);
+            const filename = match && match[1] ? decodeURIComponent(match[1].trim()) : `${id}.csapkg.zip`;
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+        } catch (error) {
+            const message = workflowPackageErrorMessage(error);
+            if (typeof showNotification === 'function') showNotification(message, 'error');
+        }
+    };
+
     function refreshCanvasLabels() {
         if (!cy) return;
         cy.nodes().forEach(function (node) {
@@ -1888,6 +2321,10 @@
         if (page && typeof window.applyTranslations === 'function') {
             window.applyTranslations(page);
         }
+        ['workflow-package-import-modal', 'workflow-package-overwrite-modal'].forEach(function (id) {
+            const modal = document.getElementById(id);
+            if (modal && typeof window.applyTranslations === 'function') window.applyTranslations(modal);
+        });
         const connectBtn = document.getElementById('workflow-connect-btn');
         if (connectBtn) {
             connectBtn.textContent = connectMode ? _t('workflows.connecting') : _t('workflows.connect');
@@ -1902,6 +2339,12 @@
         }
         if (typeof loadWorkflowOptionsForRoleModal === 'function') {
             loadWorkflowOptionsForRoleModal();
+        }
+        if (workflowPackageState.importRecord) {
+            renderWorkflowPackageImportResult(workflowPackageState.importRecord);
+        } else {
+            renderWorkflowPackageInspection();
+            renderWorkflowPackageResolution();
         }
     }
 
