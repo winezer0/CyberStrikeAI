@@ -76,7 +76,7 @@
     }
 
     async function createInspection(apiFetch, file) {
-        if (!file) throw new WorkflowPackageError('WFPKG_FILE_REQUIRED', '请选择本地图编排包');
+        if (!file) throw new WorkflowPackageError('WFPKG_FILE_REQUIRED', '请选择本地工作流包');
         const body = new FormData();
         body.append('file', file, file.name || 'workflow.csapkg.zip');
         const response = await apiFetch('/api/workflow-package-inspections', { method: 'POST', body: body });

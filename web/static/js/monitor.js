@@ -332,7 +332,7 @@ const responseStreamStateByProgressId = new Map();
 // 主通道当前迭代轮次缓存：progressId -> { iteration, orchestration }
 const mainIterationStateByProgressId = new Map();
 
-/** 图编排多 Agent 节点切换时清空流式聚合，避免推理/输出条目覆盖上一节点内容 */
+/** 工作流多 Agent 节点切换时清空流式聚合，避免推理/输出条目覆盖上一节点内容 */
 function clearTimelineStreamStates(progressId) {
     responseStreamStateByProgressId.delete(progressId);
     thinkingStreamStateByProgressId.delete(progressId);
@@ -1886,7 +1886,7 @@ function handleStreamEvent(event, progressElement, progressId,
                     workflowNodeId: curNode,
                     einoAgent: curAgent
                 });
-                // 主通道进入新轮次或图编排切换到新 Agent 节点后，不复用上一段的流式时间线条目
+                // 主通道进入新轮次或工作流切换到新 Agent 节点后，不复用上一段的流式时间线条目
                 if (prevN != null && (n < prevN || prevN !== n || (curNode && prevNode && curNode !== prevNode))) {
                     clearTimelineStreamStates(progressId);
                 }

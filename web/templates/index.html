@@ -227,13 +227,13 @@
                         </div>
                     </div>
                     <div class="nav-item" data-page="workflows">
-                        <div class="nav-item-content" data-title="图编排" onclick="switchPage('workflows')" data-i18n="nav.workflows" data-i18n-attr="data-title" data-i18n-skip-text="true">
+                        <div class="nav-item-content" data-title="工作流" onclick="switchPage('workflows')" data-i18n="nav.workflows" data-i18n-attr="data-title" data-i18n-skip-text="true">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="3" width="8" height="8" rx="2"/>
                                 <path d="M7 11v4a2 2 0 0 0 2 2h4"/>
                                 <rect x="13" y="13" width="8" height="8" rx="2"/>
                             </svg>
-                            <span data-i18n="nav.workflows">图编排</span>
+                            <span data-i18n="nav.workflows">工作流</span>
                         </div>
                     </div>
                     <div class="nav-item" data-page="projects">
@@ -2614,21 +2614,21 @@
                     </div>
                 </div>
 
-                <!-- 图编排页面 -->
+                <!-- 工作流页面 -->
                 <div id="page-workflows" class="page">
                     <div class="page-header">
-                        <h2 data-i18n="workflows.title">图编排</h2>
+                        <h2 data-i18n="workflows.title">工作流</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="refreshWorkflows()" data-i18n="common.refresh">刷新</button>
                             <button class="btn-secondary" data-require-permission="workflow:write" type="button" onclick="openWorkflowPackageImportModal()" data-i18n="workflows.package.importLocal">导入本地包</button>
-                            <button class="btn-primary" onclick="newWorkflowDraft()" data-i18n="workflows.newGraph">新建图</button>
+                            <button class="btn-primary" onclick="newWorkflowDraft()" data-i18n="workflows.newGraph">新建工作流</button>
                         </div>
                     </div>
                     <div class="page-content workflow-page-content">
                         <aside class="workflow-sidebar">
                             <div class="workflow-panel">
                                 <div class="workflow-panel-header">
-                                    <h3 data-i18n="workflows.processLibrary">流程库</h3>
+                                    <h3 data-i18n="workflows.processLibrary">工作流列表</h3>
                                 </div>
                                 <div id="workflow-list" class="workflow-list">
                                     <div class="loading-spinner" data-i18n="common.loading">加载中...</div>
@@ -2653,11 +2653,11 @@
                             <section class="workflow-meta-bar">
                                 <div class="workflow-canvas-header">
                                     <div class="workflow-canvas-heading">
-                                        <h3 id="workflow-canvas-title" class="workflow-canvas-title" data-i18n="workflows.untitled">未命名流程</h3>
+                                        <h3 id="workflow-canvas-title" class="workflow-canvas-title" data-i18n="workflows.untitled">未命名工作流</h3>
                                         <span id="workflow-canvas-subtitle" class="workflow-canvas-subtitle" hidden></span>
                                     </div>
                                 </div>
-                                <div class="workflow-toolbar" role="toolbar" aria-label="流程编辑工具" data-i18n="workflows.toolbarLabel" data-i18n-attr="aria-label" data-i18n-skip-text="true">
+                                <div class="workflow-toolbar" role="toolbar" aria-label="工作流编辑工具" data-i18n="workflows.toolbarLabel" data-i18n-attr="aria-label" data-i18n-skip-text="true">
                                     <div class="workflow-toolbar-group" role="group" aria-label="画布工具" data-i18n="workflows.canvasTools" data-i18n-attr="aria-label" data-i18n-skip-text="true">
                                         <button class="btn-secondary btn-small workflow-toolbar-button" data-require-permission="workflow:write" type="button" onclick="toggleWorkflowConnectMode()" id="workflow-connect-btn" aria-pressed="false">
                                             <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 8l8 8"/></svg>
@@ -2685,7 +2685,7 @@
                                             <div class="workflow-more-actions-divider" role="separator"></div>
                                             <button class="workflow-more-actions-danger" data-require-permission="workflow:delete" type="button" role="menuitem" onclick="closeWorkflowMoreActions(); deleteCurrentWorkflow()">
                                                 <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7"/><path d="M10 11v5m4-5v5"/></svg>
-                                                <span data-i18n="workflows.deleteWorkflow">删除流程</span>
+                                                <span data-i18n="workflows.deleteWorkflow">删除工作流</span>
                                             </button>
                                         </div>
                                     </details>
@@ -4882,11 +4882,11 @@
             window.ELK = elk;
         }
     </script>
-    <!-- 图编排流程信息 -->
+    <!-- 工作流信息 -->
     <div id="workflow-meta-modal" class="modal" style="display: none;">
         <div class="modal-content workflow-meta-modal-content">
             <div class="modal-header workflow-meta-modal-header">
-                <h2 data-i18n="workflows.metaModalTitle">流程信息</h2>
+                <h2 data-i18n="workflows.metaModalTitle">工作流信息</h2>
                 <span class="modal-close" onclick="closeWorkflowMetaModal()">&times;</span>
             </div>
             <div class="modal-body workflow-meta-modal-body">
@@ -5670,14 +5670,14 @@
                     <small class="form-hint" data-i18n="roleModal.userPromptHint">此提示词会追加到用户消息前，用于指导AI的行为。注意：这不会修改系统提示词。</small>
                 </div>
                 <div class="form-group">
-                    <label for="role-workflow-id" data-i18n="roleModal.bindWorkflow">绑定图编排流程</label>
+                    <label for="role-workflow-id" data-i18n="roleModal.bindWorkflow">绑定工作流</label>
                     <select id="role-workflow-id" class="role-form-select-native">
-                        <option value="" data-i18n="roleModal.noWorkflowBind">不绑定流程</option>
+                        <option value="" data-i18n="roleModal.noWorkflowBind">不绑定工作流</option>
                     </select>
-                    <small class="form-hint" data-i18n="roleModal.bindWorkflowHint">选中流程后，对话页使用该角色会自动触发绑定图；流程字段由图定义 JSON 自由配置。</small>
+                    <small class="form-hint" data-i18n="roleModal.bindWorkflowHint">选中工作流后，对话页使用该角色会自动触发；工作流字段由图定义 JSON 自由配置。</small>
                 </div>
                 <div class="form-group">
-                    <label for="role-workflow-policy" data-i18n="roleModal.workflowPolicy">流程触发策略</label>
+                    <label for="role-workflow-policy" data-i18n="roleModal.workflowPolicy">工作流触发策略</label>
                     <select id="role-workflow-policy" class="role-form-select-native">
                         <option value="auto" data-i18n="roleModal.workflowPolicyAuto">自动触发</option>
                         <option value="off" data-i18n="roleModal.workflowPolicyOff">关闭</option>
