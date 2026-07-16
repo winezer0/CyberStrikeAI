@@ -955,6 +955,8 @@ args:
         parser.add_argument("--repeat", type=int, default=1)
         parser.add_argument("--delay", default="0")
         parser.add_argument("--additional-args", dest="additional_args", default="")
+        parser.add_argument("--http2", dest="http2", action="store_true")
+        parser.add_argument("--no-http2", dest="http2", action="store_false")
         parser.add_argument("--action", default="")
         parser.add_argument("--include-headers", dest="include_headers", action="store_true")
         parser.add_argument("--no-include-headers", dest="include_headers", action="store_false")
@@ -987,10 +989,13 @@ args:
             show_command=False,
             show_summary=False,
             debug=False,
+            http2=False,
             response_filter_invert=False,
             response_filter_ignore_case=False,
         )
-        args = parser.parse_args()
+        # parse_known_args: tolerate legacy executor that appended bare "http2=true" tokens
+        args, unknown_args = parser.parse_known_args()
+        leaked_options = parse_additional_options(" ".join(unknown_args)) if unknown_args else {}
 
         response_filter = (args.response_filter or "").strip()
         response_max_lines = max(0, args.response_max_lines or 0)
@@ -1061,6 +1066,9 @@ args:
             cookie_jar.set(name, value)
 
         additional_options = parse_additional_options(args.additional_args)
+        additional_options.update(leaked_options)
+        if args.http2:
+            additional_options["http2"] = "true"
 
         timeout_value = None
         if args.timeout:
@@ -1086,6 +1094,15 @@ args:
             verify_option = str_to_bool(value) if lowered in {"true", "false", "1", "0", "yes", "no", "on", "off"} else value
 
         http2 = str_to_bool(additional_options["http2"]) if "http2" in additional_options else False
+        if http2:
+            try:
+                import h2  # noqa: F401
+            except ImportError:
+                print(
+                    "HTTP/2 requires the h2 package. Install with: pip install 'httpx[http2]'  (or: pip install h2)",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
         cert = additional_options.get("cert")
         explicit_proxy = (args.proxy or "").strip()
         forward_proxy = resolve_forward_proxy(explicit_proxy, trust_env, encoded_url)
@@ -1320,7 +1337,7 @@ description: |
     `@file`/`@-` 注入二进制、可视化调试
   - 连接探针：在无代理场景下额外进行 DNS/TCP/TLS 探测，粗粒度复刻 curl -w 指标
   - 可重复观测：repeat/delay + TTFB/total/speed_download 统计，便于盲注/时序测试
-  - 扩展开关：additional_args 解析 http2/cert/verify/trust_env/max_redirects 等 httpx 选项
+  - 扩展开关：http2 / httpx_options 解析 http2、cert、verify、trust_env、max_redirects 等 httpx 选项
   - 响应体瘦身：response_filter 按行/块正则提取，配合 max_lines/max_bytes 限制 stdout，降低 Agent token 消耗
 
   **响应过滤最佳实践：**
@@ -1499,13 +1516,20 @@ parameters:
       - "outputs/run-{i}.bin"：repeat>1 时按序号区分文件（{i} 将被替换为 1,2,...）
     required: false
     flag: "--download"
-  - name: "additional_args"
+  - name: "http2"
+    type: "bool"
+    description: "启用 HTTP/2（需安装 h2：pip install 'httpx[http2]'）。也可写在 httpx_options：http2=true"
+    required: false
+    default: false
+    flag: "--http2"
+  - name: "httpx_options"
     type: "string"
     description: |
-      额外的 httpx 选项，需按 httpx.Client 的关键字参数名与类型填写，支持 "key=value" 或单词形式（等价于 key=true）：
+      额外的 httpx Client 选项（整段传给 --additional-args）。支持 "key=value" 或单词形式（等价于 key=true）：
       - "http2=true"
       - "cert=/path/to/client.pem"
       - "verify=/path/to/ca.pem" 或 "verify=false"
       - "trust_env=false"、"max_redirects=5" 等
+      注意：不要用框架通用字段 additional_args（会被拆成裸 argv）。请用本字段或 http2。
     required: false
     flag: "--additional-args"
