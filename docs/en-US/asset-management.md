@@ -11,10 +11,12 @@ Asset management consolidates domains, IP addresses, ports, and services discove
 Asset management provides three main views:
 
 - **Overview**: asset totals, IPs, domains, ports, recent changes, scan coverage, and protocol distribution.
-- **Asset inventory**: identity, service details, source, tags, project ownership, scan history, and risk state.
+- **Asset inventory**: identity, service details, source, tags, project ownership, responsibility and business metadata, scan history, and risk state.
 - **Reconnaissance**: search FOFA and save confirmed results individually or in batches.
 
 Assets can launch single-target analysis or batch scans. After an Agent records findings and completes the scan callback, the inventory displays related vulnerability counts, risk level, and latest scan time.
+
+The overview can show the last 7, 30, or 90 days. It includes added/inactive asset trends, vulnerability discovery trends (including critical/high findings), total and 30-day scan coverage, never-scanned and stale counts, and the top eight protocols. Every statistic is restricted to the current user's accessible assets.
 
 ## Asset fields
 
@@ -23,6 +25,7 @@ An asset can include:
 - host, IP address, domain, port, and protocol;
 - page title and service or product fingerprint;
 - country/region, state/province, and city;
+- responsible person, department, business system, environment, and criticality;
 - source, source query, and tags;
 - active or inactive status;
 - project and owner;
@@ -45,11 +48,56 @@ example.com
 [2001:db8::1]:443
 ```
 
-The system attempts to identify the URL, domain, IP address, port, and protocol. You can then add a project, tags, title, service fingerprint, location, and status.
+The system attempts to identify the URL, domain, IP address, port, and protocol. You can then add a project, tags, title, service fingerprint, location, responsible person, department, business system, environment, criticality, and status.
+
+### Import from a spreadsheet
+
+Go to **Asset Management → Asset Inventory** and select **Bulk Import**:
+
+1. Download the XLSX (recommended) or CSV template.
+2. Enter assets in the `Assets` sheet without changing the header row.
+3. Choose the completed file or drop it onto the upload area.
+4. Review row-level validation. Duplicates, invalid values, and inaccessible projects are marked as errors.
+5. Select **Import valid rows**. Invalid rows are not submitted. When the file contains more than 100 rows, the preview shows the first 100 while submission processes every valid row.
+6. Review the created, updated, and skipped counts.
+
+Template columns:
+
+| Column | Required | Description |
+| --- | --- | --- |
+| `target` | Conditional | URL, domain, IPv4, IPv6, or a target with a port; required when `host`, `ip`, and `domain` are all empty |
+| `project` | No | Exact name or ID of an existing project; leave blank for no project |
+| `tags` | No | Comma, semicolon, or pipe-separated; up to 30 tags and 64 characters per tag |
+| `host` | Conditional | Full URL or host; may supplement `target` |
+| `ip` | Conditional | Valid IPv4 or IPv6 address |
+| `domain` | Conditional | Valid domain; internationalized domains are normalized |
+| `port` | No | `0-65535`; may be inferred from `target` |
+| `protocol` | No | Such as `http`, `https`, or `ssh`; may be inferred from a URL or common port |
+| `title` | No | Page title, up to 500 characters |
+| `server` | No | Service or product fingerprint |
+| `country` / `province` / `city` | No | Location metadata |
+| `responsible_person` | No | Responsible person, up to 255 characters |
+| `department` | No | Responsible department, up to 255 characters |
+| `business_system` | No | Owning business system, up to 255 characters |
+| `environment` | No | `production`, `staging`, `testing`, `development`, or `other` |
+| `criticality` | No | `critical`, `high`, `medium`, or `low` |
+| `status` | No | `active` or `inactive`; defaults to `active` |
+
+The parser recognizes the template's English headers and common Chinese aliases. Environment and criticality columns also accept their corresponding Chinese values. Automated exports should keep the English headers and enum values to avoid ambiguous mappings.
+
+Limits and behavior:
+
+- One XLSX/CSV file may contain up to 100,000 rows and be up to 100 MB.
+- One `/api/assets/import` request may contain up to 100,000 assets.
+- Later rows with the same “target + port + protocol” in one file are marked as duplicates and are not submitted.
+- The Web UI parses and previews the file; the server remains responsible for authorization, validation, normalization, deduplication, and transactional writes.
+- Existing assets receive non-empty incoming fields and a refreshed last-seen time instead of a duplicate record.
+- Bulk import requires `asset:write`. Referenced projects must also be accessible to the current user.
+- Do not remove the server-side row limit. Split larger datasets and import them during a low-traffic window.
 
 ### Import from FOFA
 
-1. Configure the FOFA email and API key in settings or the configuration file. You can also use the `FOFA_EMAIL` and `FOFA_API_KEY` environment variables.
+1. Configure the FOFA API key in the configuration file or under **System Settings → Asset Management**. You can also use the `FOFA_API_KEY` environment variable.
 2. Open **Asset Management → Reconnaissance**.
 3. Enter or generate a FOFA query and confirm its scope.
 4. Run the query, select results whose ownership has been verified, and choose **Save Selected**.
@@ -73,17 +121,39 @@ Assets use “target + port + protocol” as the service-level deduplication key
 
 When an existing asset is imported again, non-empty incoming fields and the last-seen time are updated. Existing fields omitted by the new record and the original first-seen time are preserved.
 
-## Search and filters
+## Search, filters, and views
 
-The Web UI searches hosts, IP addresses, domains, titles, services, and tags, with status and project filters. The backend and Agent tools additionally support:
+Keyword search in the Web UI covers hosts, IP addresses, domains, titles, services, tags, responsible people, departments, and business systems. Status and project are the primary filters; advanced filters can combine:
 
-- source, tags, port, and protocol;
-- scanned and never-scanned states;
-- first-seen, last-seen, and latest-scan time ranges;
-- allowlisted sort fields such as latest scan time;
-- paginated queries.
+- risk level and minimum vulnerability count;
+- protocol, port, source, and exact tag;
+- scanned, never scanned, or not scanned for 30/60/90 days;
+- country/region, state/province, city, responsible person, department, and business system;
+- environment, criticality, first-seen dates, and last-seen dates;
+- sorting by last seen, latest scan, risk, vulnerability count, first seen, target name, or port.
 
 Sorting by latest scan time in ascending order places never-scanned assets first, making coverage gaps visible.
+
+Frequently used combinations can be saved as filter views. Saved views use the current browser's `localStorage`; they are not synchronized to the server, other browsers, or other users.
+
+The HTTP API and `query_assets` additionally support `max_vulnerabilities`, latest-scan time ranges, and allowlisted creation/update sort fields. HTTP lists allow up to 100 rows per page, while Agent queries allow up to 50.
+
+## Bulk maintenance and export
+
+After selecting assets, you can act on the current page or select every result matching the current filters. Cross-page selection resolves the filters again on the server and is limited to 10,000 assets; narrow the filters when the result exceeds that limit.
+
+Available actions:
+
+- **Bind project**: replace the project binding for all selected assets;
+- **Bulk edit**: change status, responsible person, department, business system, environment, and criticality, and add or remove tags;
+- **Create scan task / Send to chat**: apply one prompt template to the selected assets;
+- **Export CSV / XLSX**: export the currently selected rows in the browser, including ownership, risk, vulnerability count, and timestamp fields;
+- **Merge duplicates**: keep the first selected asset as primary, fill its empty fields from the other records, and union their tags;
+- **Batch delete**: permanently delete the selected assets.
+
+Bulk edit, project binding, and batch delete are all-or-nothing transactions. If any requested asset is missing or outside the caller's scope, the entire operation fails without a partial update.
+
+Merge is only allowed when every duplicate shares a domain, IP address, or Host with the primary asset, and accepts 2-100 selected records. Existing primary values win, tags are unioned subject to the 30-tag limit, and the other records are deleted. It requires both `asset:write` and `asset:delete`; confirm the primary record and the scan history you need to retain before merging.
 
 ## Scanning and risk updates
 
@@ -128,6 +198,8 @@ Six built-in tools expose asset operations to Agents:
 
 `query_assets` returns 20 summaries by default and allows at most 50 per page. Use `get_asset` for full details so large inventories do not consume the model context.
 
+Both `create_asset` and `update_asset` accept responsibility and business metadata, and `query_assets` can filter by those fields. Agent writes go through the same normalization, validation, deduplication, and authorization checks as the HTTP API.
+
 ## Access control
 
 Asset permissions are separated into:
@@ -137,6 +209,16 @@ Asset permissions are separated into:
 - `asset:delete`: delete assets.
 
 Server-side authorization considers the asset owner, explicit resource assignments, the linked project, and permission scope (`all`, `assigned`, or `own`). When a conversation is linked to a project, Agent asset queries are restricted to that project and tool arguments cannot widen the boundary.
+
+Asset batch endpoint limits:
+
+- `POST /api/assets/import`: up to 100,000 assets per request;
+- `GET /api/assets/selection`: resolve up to 10,000 matching assets;
+- `POST /api/assets/scan-links`: up to 10,000 links per request;
+- `PUT /api/assets/bulk`: up to 10,000 asset IDs per request;
+- `PUT /api/assets/project-binding`: up to 10,000 asset IDs per request;
+- `POST /api/assets/batch-delete`: up to 10,000 asset IDs per request;
+- `POST /api/assets/merge`: merge 2-100 asset IDs per request.
 
 ## Recommended workflow
 
