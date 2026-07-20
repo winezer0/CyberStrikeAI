@@ -17,10 +17,15 @@ import (
 func main() {
 	var configPath = flag.String("config", "config.yaml", "配置文件路径")
 	var httpsBootstrap = flag.Bool("https", false, "启用主站 HTTPS：未配置 tls_cert_path/tls_key_path 时使用内存自签证书（本地测试）；与 run.sh 默认行为一致")
+	var httpBootstrap = flag.Bool("http", false, "强制主站使用明文 HTTP：覆盖配置文件中的 tls_enabled/tls_auto_self_sign/tls_cert_path/tls_key_path")
 	flag.Parse()
 
 	// 环境变量兼容（便于 systemd/docker 等不传参场景）
-	if !*httpsBootstrap {
+	if *httpsBootstrap && *httpBootstrap {
+		fmt.Fprintln(os.Stderr, "--http 与 --https 不能同时使用")
+		os.Exit(2)
+	}
+	if !*httpsBootstrap && !*httpBootstrap {
 		v := strings.TrimSpace(os.Getenv("CYBERSTRIKE_HTTPS"))
 		if v == "1" || strings.EqualFold(v, "true") || strings.EqualFold(v, "yes") {
 			*httpsBootstrap = true
@@ -51,7 +56,9 @@ func main() {
 		termout.PrintConfigCreated()
 	}
 
-	if *httpsBootstrap {
+	if *httpBootstrap {
+		config.ApplyPlainHTTPBootstrap(cfg)
+	} else if *httpsBootstrap {
 		config.ApplyDevHTTPSBootstrap(cfg)
 	}
 

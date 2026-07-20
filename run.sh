@@ -348,13 +348,17 @@ need_rebuild() {
 }
 
 # Main flow
-# Default: HTTPS (--https passed to binary); --http uses plain HTTP.
+# Default: HTTPS (--https passed to binary); --http forces plain HTTP even if config.yaml enables TLS.
 main() {
     USE_HTTPS=1
     FORWARD_ARGS=()
     for arg in "$@"; do
         if [ "$arg" = "--http" ]; then
             USE_HTTPS=0
+            continue
+        fi
+        if [ "$arg" = "--https" ]; then
+            USE_HTTPS=1
             continue
         fi
         FORWARD_ARGS+=("$arg")
@@ -406,9 +410,9 @@ main() {
         fi
     else
         if [ "${#FORWARD_ARGS[@]}" -gt 0 ]; then
-            exec "./$BINARY_NAME" -config "$CONFIG_FILE" "${FORWARD_ARGS[@]}"
+            exec "./$BINARY_NAME" -config "$CONFIG_FILE" --http "${FORWARD_ARGS[@]}"
         else
-            exec "./$BINARY_NAME" -config "$CONFIG_FILE"
+            exec "./$BINARY_NAME" -config "$CONFIG_FILE" --http
         fi
     fi
 }
