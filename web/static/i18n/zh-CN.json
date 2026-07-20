@@ -428,6 +428,8 @@
     "open": "打开",
     "unbindProjectTitle": "解除项目绑定",
     "unbind": "解绑",
+    "unbindAssetConfirm": "确定将“{{target}}”从当前项目解绑吗？资产不会被删除。",
+    "unbindAssetDone": "已从项目解绑资产",
     "confirmUnbindConversation": "解除该对话与当前项目的绑定？",
     "unbindFailed": "解绑失败",
     "factMetaCategory": "分类: {{value}}",

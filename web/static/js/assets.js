@@ -1630,8 +1630,36 @@ function importFofaRowAsset(index) {
     return importFofaAssetsByIndexes([Number(index)]);
 }
 
-function assetDetailItem(label, value, wide) {
-    return `<div class="asset-detail-item${wide ? ' asset-detail-item--wide' : ''}"><span>${escapeHtml(label)}</span><div>${value || '<span class="muted">-</span>'}</div></div>`;
+function assetDetailItem(label, value, wide, options) {
+    const itemClass = ['asset-detail-item'];
+    if (wide) itemClass.push('asset-detail-item--wide');
+    if (options?.className) itemClass.push(options.className);
+    return `<div class="${itemClass.join(' ')}"><span>${escapeHtml(label)}</span><div>${value || '<span class="muted">-</span>'}</div></div>`;
+}
+
+function assetDetailBadge(label, value, modifier) {
+    if (!value) return '';
+    const badgeClass = modifier ? ` asset-detail-overview-badge--${modifier}` : '';
+    return `<span class="asset-detail-overview-badge${badgeClass}"><span>${escapeHtml(label)}</span>${escapeHtml(value)}</span>`;
+}
+
+function assetDetailOverview(asset) {
+    const service = [asset.protocol, asset.port ? ':' + asset.port : ''].join('');
+    const location = [asset.country, asset.province, asset.city].filter(Boolean).join(' / ');
+    const statusLabel = asset.status === 'inactive' ? assetT('assets.statusInactive', '停用') : assetT('assets.statusActive', '活跃');
+    const risk = assetRiskPresentation(asset.risk_level);
+    return `<section class="asset-detail-overview">
+        <div class="asset-detail-overview-main">
+            <div class="asset-detail-target">${escapeHtml(assetTargetLabel(asset))}</div>
+            <div class="asset-detail-meta-line">${escapeHtml([asset.ip, asset.domain, service].filter(Boolean).join(' · ') || '-')}</div>
+        </div>
+        <div class="asset-detail-overview-badges">
+            ${assetDetailBadge(assetT('assets.status', '状态'), statusLabel, asset.status === 'inactive' ? 'neutral' : 'success')}
+            ${assetDetailBadge(assetT('assets.risk', '风险'), risk.label, risk.level)}
+            ${assetDetailBadge(assetT('assets.source', '来源'), asset.source || '', 'source')}
+            ${assetDetailBadge(assetT('assets.location', '地区'), location, 'location')}
+        </div>
+    </section>`;
 }
 
 function openAssetDetail(index) {
@@ -1662,7 +1690,7 @@ function openAssetDetailRecord(asset) {
         assetDetailItem(assetT('assets.environment', '环境'), escapeHtml(asset.environment || '')),
         assetDetailItem(assetT('assets.criticality', '重要性'), escapeHtml(asset.criticality || '')),
         assetDetailItem(assetT('assets.source', '来源'), escapeHtml(asset.source || '')),
-        assetDetailItem(assetT('assets.sourceQuery', '来源查询'), asset.source_query ? `<code>${escapeHtml(asset.source_query)}</code>` : ''),
+        assetDetailItem(assetT('assets.sourceQuery', '来源查询'), asset.source_query ? `<code>${escapeHtml(asset.source_query)}</code>` : '', true, { className: 'asset-detail-item--code' }),
         assetDetailItem(assetT('assets.tagsLabel', '标签'), tags, true),
         assetDetailItem(assetT('assets.firstSeen', '首次发现'), escapeHtml(asset.first_seen_at ? new Date(asset.first_seen_at).toLocaleString() : '')),
         assetDetailItem(assetT('assets.lastSeen', '最近发现'), escapeHtml(asset.last_seen_at ? new Date(asset.last_seen_at).toLocaleString() : '')),
@@ -1670,7 +1698,7 @@ function openAssetDetailRecord(asset) {
         assetDetailItem(assetT('assets.relatedVulnerabilities', '相关漏洞'), String(Number(asset.vulnerability_count || 0)))
     ];
     const grid = document.getElementById('asset-detail-grid');
-    if (grid) grid.innerHTML = values.join('');
+    if (grid) grid.innerHTML = assetDetailOverview(asset) + `<div class="asset-detail-fields">${values.join('')}</div>`;
     if (typeof applyRBACToUI === 'function') applyRBACToUI(document.getElementById('asset-detail-modal'));
     if (typeof openAppModal === 'function') openAppModal('asset-detail-modal');
     else document.getElementById('asset-detail-modal').style.display = 'flex';

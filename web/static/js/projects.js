@@ -1096,7 +1096,7 @@ async function loadProjectAssets(page) {
             <td>${escapeHtml(asset.source || '-')}</td>
             <td>${escapeHtml(updated)}</td>
             <td><span class="asset-status asset-status--${escapeHtml(asset.status || 'active')}">${escapeHtml(status)}</span></td>
-            <td class="col-actions"><div class="projects-table-actions"><button type="button" class="projects-action-btn projects-action-btn--view" onclick="openProjectAssetDetail(${index})">${escapeHtml(tpFmt('common.view', '查看'))}</button></div></td>
+            <td class="col-actions"><div class="projects-table-actions"><button type="button" class="projects-action-btn projects-action-btn--mute" data-require-permission="asset:write" onclick="unbindAssetFromProject(${index})" title="${escapeHtml(tp('projects.unbindProjectTitle'))}">${escapeHtml(tp('projects.unbind'))}</button></div></td>
         </tr>`;
     }).join('');
     renderProjectAssetsPagination();
@@ -1145,6 +1145,29 @@ function changeProjectAssetsPageSize(value) {
 function openProjectAssetDetail(index) {
     const asset = currentProjectAssets[Number(index)];
     if (asset && typeof window.openAssetDetailRecord === 'function') window.openAssetDetailRecord(asset);
+}
+
+async function unbindAssetFromProject(index) {
+    const asset = currentProjectAssets[Number(index)];
+    if (!asset || !asset.id || !currentProjectId) return;
+    const target = asset.host || asset.domain || asset.ip || asset.id;
+    const message = tpFmt('projects.unbindAssetConfirm', `确定将“${target}”从当前项目解绑吗？资产不会被删除。`, { target });
+    if (!confirm(message)) return;
+    try {
+        const res = await apiFetch('/api/assets/project-binding', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ asset_ids: [asset.id], project_id: '' })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        if (typeof showInlineToast === 'function') {
+            showInlineToast(tpFmt('projects.unbindAssetDone', '已从项目解绑资产', { target }));
+        }
+        await loadProjectAssets(projectAssetsPagination.page);
+        await refreshProjectHeaderStats();
+    } catch (error) {
+        alert(`${tp('projects.unbindFailed')}: ${error.message || error}`);
+    }
 }
 
 let _selectedGraphFactKey = null;
@@ -2879,6 +2902,7 @@ window.unbindConversationFromProject = unbindConversationFromProject;
 window.loadProjectConversations = loadProjectConversations;
 window.loadProjectAssets = loadProjectAssets;
 window.openProjectAssetDetail = openProjectAssetDetail;
+window.unbindAssetFromProject = unbindAssetFromProject;
 window.loadProjectFactGraph = loadProjectFactGraph;
 window.filterProjectFactGraph = filterProjectFactGraph;
 window.centerProjectFactGraph = centerProjectFactGraph;

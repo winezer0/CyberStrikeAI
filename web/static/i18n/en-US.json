@@ -440,6 +440,8 @@
     "open": "Open",
     "unbindProjectTitle": "Unbind project",
     "unbind": "Unbind",
+    "unbindAssetConfirm": "Unbind “{{target}}” from this project? The asset will not be deleted.",
+    "unbindAssetDone": "Asset unbound from project",
     "confirmUnbindConversation": "Unbind this conversation from current project?",
     "unbindFailed": "Unbind failed",
     "factMetaCategory": "Category: {{value}}",
