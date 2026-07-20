@@ -56,6 +56,7 @@ const mentionState = {
 
 // IME输入法状态跟踪
 let isComposing = false;
+let compositionEndTimer = null;
 
 // 输入框草稿保存相关
 const DRAFT_STORAGE_KEY = 'cyberstrike-chat-draft';
@@ -1576,8 +1577,9 @@ function handleChatInputClick(event) {
 
 function handleChatInputKeydown(event) {
     // 如果正在使用输入法输入（IME），回车键应该用于确认候选词，而不是发送消息
-    // 使用 event.isComposing 或 isComposing 标志来判断
-    if (event.isComposing || isComposing) {
+    // Safari 可能在确认候选词时先触发 compositionend，再触发 Enter keydown，
+    // 因此这里同时使用全局状态和 keyCode 229 兜底。
+    if (event.isComposing || isComposing || event.keyCode === 229) {
         return;
     }
 
@@ -2923,10 +2925,20 @@ if (chatInput) {
     chatInput.addEventListener('focus', handleChatInputClick);
     // IME输入法事件监听，用于跟踪输入法状态
     chatInput.addEventListener('compositionstart', () => {
+        if (compositionEndTimer) {
+            clearTimeout(compositionEndTimer);
+            compositionEndTimer = null;
+        }
         isComposing = true;
     });
     chatInput.addEventListener('compositionend', () => {
-        isComposing = false;
+        if (compositionEndTimer) {
+            clearTimeout(compositionEndTimer);
+        }
+        compositionEndTimer = setTimeout(() => {
+            isComposing = false;
+            compositionEndTimer = null;
+        }, 0);
     });
     chatInput.addEventListener('blur', () => {
         setTimeout(() => {
