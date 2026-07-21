@@ -111,17 +111,24 @@ Coverage:
 | PTY execution path | Uses the same output cap |
 | Frontend detail modal | Has an additional UI display cap |
 
-When the cap is reached, CyberStrikeAI keeps a prefix and appends a truncation marker. The marker is counted inside the configured budget, so a 50000-byte cap does not become `50000 + marker`.
+When the cap is reached, the full output is written to a local trunc file and the agent-facing payload becomes a `<persisted-output>` notice (with absolute path) that fits inside the configured budget.
 
 Example:
 
 ```text
-<bounded output prefix>
+<persisted-output>
+Output too large (200000). Full output saved to: /path/to/tmp/reduction/conversations/<id>/trunc/<execution_id>
+Use read_file with offset/limit to read parts of the file.
+Preview (first …):
+…
 
-...[tool output limit reached: kept 50000 bytes; further output suppressed]...
+Preview (last …):
+…
+
+</persisted-output>
 ```
 
-The current strategy is “prefix + marker.” For stronger auditability, a future enhancement can use “head 25k + tail 25k + full-output artifact path.”
+The current strategy is “spill full text to disk + bounded preview in context.” Agents can recover the original via `read_file`.
 
 ## Database and Resume Context
 
@@ -202,4 +209,4 @@ Expected behavior:
 ## Boundaries
 
 - CyberStrikeAI cannot control how a remote external MCP server collects output internally; it caps results after they enter CyberStrikeAI and protects calls with concurrency limits and circuit breakers.
-- Full original output is not automatically written to an artifact path today. If complete audit recovery is required, add spill-to-file and include the artifact path in the bounded result.
+- Oversized tool output is spilled to local `tmp/reduction/.../trunc/<id>` (or `reduction_root_dir`) before truncation; the bounded result includes an absolute path for `read_file`.
