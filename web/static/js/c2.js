@@ -580,6 +580,7 @@
                 C2.loadTasks();
                 break;
             case 'c2-payloads':
+                C2.refreshFormSelects(document.getElementById('page-c2-payloads'));
                 C2.loadListenersForPayload();
                 break;
             case 'c2-events':
@@ -752,7 +753,7 @@
             const profileOpts = listenerProfileSelectHtml('');
             const emptyProfHintCreate = (C2.profiles && C2.profiles.length > 0)
                 ? ''
-                : `<div class="form-hint" style="margin-bottom:6px;color:#b45309;">${escapeHtml(c2t('c2.listeners.malleableProfileEmptyListHint'))}</div>`;
+                : `<div class="form-hint form-hint--warning" style="margin-bottom:6px;">${escapeHtml(c2t('c2.listeners.malleableProfileEmptyListHint'))}</div>`;
             content.innerHTML = `
             <div class="c2-modal-header">
                 <h3>${escapeHtml(c2t('c2.listeners.modalCreateTitle'))}</h3>
@@ -805,7 +806,7 @@
                         <input type="checkbox" id="c2-listener-legacy-shell">
                         ${escapeHtml(c2t('c2.listeners.allowLegacyShell'))}
                     </label>
-                    <div class="form-hint" style="color:#b45309;">${escapeHtml(c2t('c2.listeners.allowLegacyShellHint'))}</div>
+                    <div class="form-hint form-hint--warning">${escapeHtml(c2t('c2.listeners.allowLegacyShellHint'))}</div>
                 </div>
             </div>
             <div class="c2-modal-footer">
@@ -937,7 +938,7 @@
                 : `<div class="form-hint" style="margin-bottom:6px;">${escapeHtml(c2t('c2.listeners.malleableProfileNonHttpHint'))}</div>`;
             const emptyProfHint = (C2.profiles && C2.profiles.length > 0)
                 ? ''
-                : `<div class="form-hint" style="margin-bottom:6px;color:#b45309;">${escapeHtml(c2t('c2.listeners.malleableProfileEmptyListHint'))}</div>`;
+                : `<div class="form-hint form-hint--warning" style="margin-bottom:6px;">${escapeHtml(c2t('c2.listeners.malleableProfileEmptyListHint'))}</div>`;
             content.innerHTML = `
             <div class="c2-modal-header">
                 <h3>${escapeHtml(c2t('c2.listeners.editTitle'))}</h3>
@@ -979,7 +980,7 @@
                         <input type="checkbox" id="c2-listener-legacy-shell"${legacyShell ? ' checked' : ''}>
                         ${escapeHtml(c2t('c2.listeners.allowLegacyShell'))}
                     </label>
-                    <div class="form-hint" style="color:#b45309;">${escapeHtml(c2t('c2.listeners.allowLegacyShellHint'))}</div>
+                    <div class="form-hint form-hint--warning">${escapeHtml(c2t('c2.listeners.allowLegacyShellHint'))}</div>
                 </div>` : ''}
             </div>
             <div class="c2-modal-footer">
@@ -3179,6 +3180,7 @@
                 return '<option value="' + k.value + '">' + k.label + '</option>';
             }).join('');
         }
+        C2.refreshFormSelects(document.getElementById('page-c2-payloads'));
     };
 
     C2.updateLoopbackBuildHint = function() {
@@ -3247,6 +3249,7 @@
         if (buildBtn && !buildBtn.disabled) buildBtn.textContent = c2t('c2.payloads.buildBeaconBtn');
         const genBtn = document.getElementById('c2-generate-oneliner-btn');
         if (genBtn) genBtn.textContent = c2t('c2.payloads.generateOnelinerBtn');
+        C2.refreshFormSelects(document.getElementById('page-c2-payloads'));
     };
 
     C2.generateOneliner = function() {

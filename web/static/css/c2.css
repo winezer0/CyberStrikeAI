@@ -120,6 +120,63 @@ html[data-theme="dark"] .c2-session-main-empty__icon {
     border-color: rgba(96, 165, 250, 0.35) !important;
 }
 
+html[data-theme="dark"] .c2-listener-card-actions {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.55) 0%, var(--c2-surface-alt) 100%);
+}
+
+html[data-theme="dark"] .c2-listener-pill--running {
+    color: var(--c2-green);
+}
+
+html[data-theme="dark"] .c2-listener-pill--error {
+    color: var(--c2-amber);
+}
+
+html[data-theme="dark"] .c2-listener-profile-badge {
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.16);
+    border-color: rgba(139, 92, 246, 0.32);
+}
+
+html[data-theme="dark"] .c2-listener-profile-dot {
+    background: #a78bfa;
+}
+
+html[data-theme="dark"] .c2-listener-card-actions .btn-secondary {
+    background: var(--c2-surface-alt);
+    border: 1px solid var(--c2-border);
+    color: var(--c2-text);
+}
+
+html[data-theme="dark"] .c2-listener-card-actions .btn-secondary:hover {
+    background: #1f2937;
+    border-color: var(--c2-border-hover);
+    color: var(--c2-accent);
+}
+
+html[data-theme="dark"] .c2-listener-card-actions .btn-danger {
+    background: var(--c2-red-dim);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    color: var(--c2-red);
+}
+
+html[data-theme="dark"] .c2-listener-card-actions .btn-danger:hover {
+    background: rgba(248, 113, 113, 0.2);
+    border-color: var(--c2-red);
+}
+
+html[data-theme="dark"] .c2-modal-overlay {
+    background: rgba(2, 6, 23, 0.72);
+}
+
+html[data-theme="dark"] .c2-form-group .form-hint--warning {
+    color: var(--c2-amber);
+}
+
+html[data-theme="dark"] .c2-checkbox-label {
+    color: var(--c2-text);
+}
+
 /* ============================================================================
    Form Controls (scoped to C2 pages)
    ============================================================================ */
@@ -158,9 +215,9 @@ html[data-theme="dark"] .c2-session-main-empty__icon {
     box-shadow: 0 0 0 3px var(--c2-accent-dim);
 }
 
-#page-c2-payloads select.form-control,
-#page-c2-sessions select.form-control,
-.c2-modal select.form-control {
+#page-c2-payloads select.form-control:not(.c2-form-select-native),
+#page-c2-sessions select.form-control:not(.c2-form-select-native),
+.c2-modal select.form-control:not(.c2-form-select-native) {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M2.5 4.5L6 8l3.5-3.5'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
@@ -233,13 +290,34 @@ html[data-theme="dark"] .c2-session-main-empty__icon {
     box-shadow: 0 0 0 3px var(--c2-accent-dim);
 }
 
-html[data-theme="dark"] .c2-modal .c2-form-select-trigger {
+html[data-theme="dark"] .c2-modal .c2-form-select-trigger,
+html[data-theme="dark"] #page-c2-payloads .c2-form-select-trigger {
     background: var(--c2-surface);
     border-color: var(--c2-border);
 }
 
-html[data-theme="dark"] .c2-modal .c2-form-select-ui.open .c2-form-select-trigger {
+html[data-theme="dark"] .c2-modal .c2-form-select-ui.open .c2-form-select-trigger,
+html[data-theme="dark"] #page-c2-payloads .c2-form-select-ui.open .c2-form-select-trigger {
     border-color: var(--c2-accent);
+}
+
+html[data-theme="dark"] #page-c2-payloads .c2-form-select-dropdown {
+    background: var(--c2-surface);
+    border-color: var(--c2-border);
+    box-shadow: var(--c2-shadow-lg);
+}
+
+html[data-theme="dark"] #page-c2-payloads .c2-form-select-option:hover {
+    background: var(--c2-surface-alt);
+}
+
+html[data-theme="dark"] #page-c2-payloads .c2-form-select-option.is-selected {
+    background: var(--c2-accent-dim);
+    color: var(--c2-accent);
+}
+
+#page-c2-payloads .c2-form-group {
+    position: relative;
 }
 
 .c2-form-select-ui.open {
@@ -2537,6 +2615,10 @@ html[data-theme="dark"] .c2-modal .c2-form-select-ui.open .c2-form-select-trigge
     font-size: 12px;
     color: var(--c2-text-muted);
     margin-top: 6px;
+}
+
+.c2-form-group .form-hint--warning {
+    color: #b45309;
 }
 
 /* ============================================================================
