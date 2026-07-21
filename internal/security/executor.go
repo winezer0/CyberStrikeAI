@@ -37,6 +37,7 @@ type Executor struct {
 	mcpServer               *mcp.Server
 	logger                  *zap.Logger
 	shellNoOutputTimeoutSec int // execute/exec 无新输出空闲秒数；0=默认 300；-1=关闭（见 SetShellNoOutputTimeoutSeconds）
+	toolOutputMaxBytes      int
 }
 
 // NewExecutor 创建新的执行器
@@ -55,6 +56,13 @@ func NewExecutor(cfg *config.SecurityConfig, mcpServer *mcp.Server, logger *zap.
 // SetShellNoOutputTimeoutSeconds 配置 exec 工具无输出空闲终止（与 agent.shell_no_output_timeout_seconds 一致）。
 func (e *Executor) SetShellNoOutputTimeoutSeconds(sec int) {
 	e.shellNoOutputTimeoutSec = sec
+}
+
+// SetToolOutputMaxBytes limits stdout/stderr retained and streamed by exec-like
+// tools. It should stay aligned with MCP result normalization so every channel
+// sees the same bounded payload.
+func (e *Executor) SetToolOutputMaxBytes(maxBytes int) {
+	e.toolOutputMaxBytes = maxBytes
 }
 
 // buildToolIndex 构建工具索引，将 O(n) 查找优化为 O(1)
@@ -151,7 +159,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 	var err error
 	// 如果上层提供了 stdout/stderr 增量回调，则边执行边读取并回调。
 	if cb, ok := ctx.Value(ToolOutputCallbackCtxKey).(ToolOutputCallback); ok && cb != nil {
-		output, err = streamCommandOutput(ctx, cmd, cb, ResolveShellNoOutputTimeoutSeconds(e.shellNoOutputTimeoutSec))
+		output, err = streamCommandOutput(ctx, cmd, cb, ResolveShellNoOutputTimeoutSeconds(e.shellNoOutputTimeoutSec), e.toolOutputMaxBytes)
 		if err != nil && shouldRetryWithPTY(output) {
 			e.logger.Info("检测到工具需要 TTY，使用 PTY 重试",
 				zap.String("tool", toolName),
@@ -159,11 +167,11 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
 			applyDefaultTerminalEnv(cmd2)
 			_ = prepareShellCmdSession(cmd2)
-			output, err = runCommandWithPTY(ctx, cmd2, cb)
+			output, err = runCommandWithPTY(ctx, cmd2, cb, e.toolOutputMaxBytes)
 		}
 	} else {
 		// 非流式：内存缓冲 + ctx 取消杀进程组；行为对齐原 CombinedOutput，避免双流管道 fan-in 死锁。
-		output, err = combinedOutputCancellable(ctx, cmd)
+		output, err = combinedOutputCancellableWithLimit(ctx, cmd, e.toolOutputMaxBytes)
 		if err != nil && shouldRetryWithPTY(output) {
 			e.logger.Info("检测到工具需要 TTY，使用 PTY 重试",
 				zap.String("tool", toolName),
@@ -171,7 +179,7 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 			cmd2 := exec.CommandContext(ctx, toolConfig.Command, cmdArgs...)
 			applyDefaultTerminalEnv(cmd2)
 			_ = prepareShellCmdSession(cmd2)
-			output, err = runCommandWithPTY(ctx, cmd2, nil)
+			output, err = runCommandWithPTY(ctx, cmd2, nil, e.toolOutputMaxBytes)
 		}
 	}
 	if err != nil {
@@ -914,7 +922,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 	var err error
 	// 若上层提供工具输出增量回调，则边执行边流式读取。
 	if cb, ok := ctx.Value(ToolOutputCallbackCtxKey).(ToolOutputCallback); ok && cb != nil {
-		output, err = streamCommandOutput(ctx, cmd, cb, ResolveShellNoOutputTimeoutSeconds(e.shellNoOutputTimeoutSec))
+		output, err = streamCommandOutput(ctx, cmd, cb, ResolveShellNoOutputTimeoutSeconds(e.shellNoOutputTimeoutSec), e.toolOutputMaxBytes)
 		if err != nil && shouldRetryWithPTY(output) {
 			e.logger.Info("检测到系统命令需要 TTY，使用 PTY 重试")
 			cmd2 := exec.CommandContext(ctx, shell, "-c", command)
@@ -922,10 +930,10 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 				cmd2.Dir = workDir
 			}
 			ConfigureShellCmdForAgentExecute(cmd2)
-			output, err = runCommandWithPTY(ctx, cmd2, cb)
+			output, err = runCommandWithPTY(ctx, cmd2, cb, e.toolOutputMaxBytes)
 		}
 	} else {
-		output, err = combinedOutputCancellable(ctx, cmd)
+		output, err = combinedOutputCancellableWithLimit(ctx, cmd, e.toolOutputMaxBytes)
 		if err != nil && shouldRetryWithPTY(output) {
 			e.logger.Info("检测到系统命令需要 TTY，使用 PTY 重试")
 			cmd2 := exec.CommandContext(ctx, shell, "-c", command)
@@ -933,7 +941,7 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 				cmd2.Dir = workDir
 			}
 			ConfigureShellCmdForAgentExecute(cmd2)
-			output, err = runCommandWithPTY(ctx, cmd2, nil)
+			output, err = runCommandWithPTY(ctx, cmd2, nil, e.toolOutputMaxBytes)
 		}
 	}
 	if err != nil {
@@ -974,9 +982,14 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 // 非流式路径不使用双流管道 fan-in，避免 stderr 撑满管道缓冲区时与 stdout 互相阻塞导致死锁。
 // 无输出空闲检测由上层 agent.tool_timeout_minutes 兜底，不改变原 CombinedOutput 语义。
 func combinedOutputCancellable(ctx context.Context, cmd *exec.Cmd) (string, error) {
-	var stdoutBuf, stderrBuf strings.Builder
-	cmd.Stdout = &stdoutBuf
-	cmd.Stderr = &stderrBuf
+	return combinedOutputCancellableWithLimit(ctx, cmd, 0)
+}
+
+func combinedOutputCancellableWithLimit(ctx context.Context, cmd *exec.Cmd, maxBytes int) (string, error) {
+	stdoutBuf := newBoundedOutputCollector(maxBytes)
+	stderrBuf := newBoundedOutputCollector(maxBytes)
+	cmd.Stdout = stdoutBuf
+	cmd.Stderr = stderrBuf
 
 	session, err := StartShellSession(cmd)
 	if err != nil {
@@ -1003,9 +1016,9 @@ func combinedOutputCancellable(ctx context.Context, cmd *exec.Cmd) (string, erro
 	case waitErr = <-done:
 	case <-ctx.Done():
 		waitErr = <-done
-		return joinCommandOutput(stdoutBuf.String(), stderrBuf.String()), ctx.Err()
+		return limitOutputString(joinCommandOutput(stdoutBuf.String(), stderrBuf.String()), maxBytes), ctx.Err()
 	}
-	return joinCommandOutput(stdoutBuf.String(), stderrBuf.String()), waitErr
+	return limitOutputString(joinCommandOutput(stdoutBuf.String(), stderrBuf.String()), maxBytes), waitErr
 }
 
 func joinCommandOutput(stdout, stderr string) string {
@@ -1018,9 +1031,94 @@ func joinCommandOutput(stdout, stderr string) string {
 	return stdout + stderr
 }
 
+type boundedOutputCollector struct {
+	builder   strings.Builder
+	maxBytes  int
+	seenBytes int
+	truncated bool
+}
+
+func newBoundedOutputCollector(maxBytes int) *boundedOutputCollector {
+	return &boundedOutputCollector{maxBytes: maxBytes}
+}
+
+func (b *boundedOutputCollector) Write(p []byte) (int, error) {
+	b.WriteStringLimited(string(p))
+	return len(p), nil
+}
+
+func (b *boundedOutputCollector) WriteStringLimited(s string) string {
+	if b == nil {
+		return ""
+	}
+	if b.maxBytes <= 0 {
+		b.seenBytes += len(s)
+		b.builder.WriteString(s)
+		return s
+	}
+	b.seenBytes += len(s)
+	marker := b.truncationMarker()
+	contentLimit := b.maxBytes - len(marker)
+	if contentLimit < 0 {
+		marker = truncateStringBytes(marker, b.maxBytes)
+		contentLimit = 0
+	}
+	if b.builder.Len() >= contentLimit {
+		if b.truncated {
+			return ""
+		}
+		b.truncated = true
+		b.builder.WriteString(marker)
+		return marker
+	}
+	remaining := contentLimit - b.builder.Len()
+	if len(s) <= remaining {
+		b.builder.WriteString(s)
+		return s
+	}
+	kept := truncateStringBytes(s, remaining)
+	b.builder.WriteString(kept)
+	b.truncated = true
+	b.builder.WriteString(marker)
+	return kept + marker
+}
+
+func (b *boundedOutputCollector) String() string {
+	if b == nil {
+		return ""
+	}
+	return b.builder.String()
+}
+
+func (b *boundedOutputCollector) truncationMarker() string {
+	return fmt.Sprintf("\n\n...[tool output limit reached: kept %d bytes; further output suppressed]...", b.maxBytes)
+}
+
+func limitOutputString(s string, maxBytes int) string {
+	collector := newBoundedOutputCollector(maxBytes)
+	return collector.WriteStringLimited(s)
+}
+
+func truncateStringBytes(s string, maxBytes int) string {
+	if maxBytes <= 0 {
+		return ""
+	}
+	if len(s) <= maxBytes {
+		return s
+	}
+	cut := maxBytes
+	for cut > 0 && (s[cut]&0xC0) == 0x80 {
+		cut--
+	}
+	if cut <= 0 {
+		return ""
+	}
+	return s[:cut]
+}
+
 // streamCommandOutput 以“边读边回调”的方式读取命令 stdout/stderr。
 // 使用定长块读取，避免按行读取在无换行输出时永久阻塞；ctx 取消时终止进程树。
-func streamCommandOutput(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback, noOutputSec int) (string, error) {
+func streamCommandOutput(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback, noOutputSec int, maxBytes int) (string, error) {
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", err
@@ -1072,7 +1170,7 @@ func streamCommandOutput(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallba
 		close(chunks)
 	}()
 
-	var outBuilder strings.Builder
+	outBuilder := newBoundedOutputCollector(maxBytes)
 	var deltaBuilder strings.Builder
 	lastFlush := time.Now()
 
@@ -1095,7 +1193,7 @@ func streamCommandOutput(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallba
 	fireInactivity := func() {
 		TerminateShellCmdSession(session)
 		msg := ShellNoOutputTimeoutMessage(idleWatch.Sec)
-		outBuilder.WriteString(msg)
+		msg = outBuilder.WriteStringLimited(msg)
 		if cb != nil {
 			cb(msg)
 		}
@@ -1124,8 +1222,8 @@ chunksLoop:
 			if chunk != "" && idleWatch != nil {
 				idleWatch.Bump()
 			}
-			outBuilder.WriteString(chunk)
-			deltaBuilder.WriteString(chunk)
+			keptChunk := outBuilder.WriteStringLimited(chunk)
+			deltaBuilder.WriteString(keptChunk)
 			if deltaBuilder.Len() >= 2048 || time.Since(lastFlush) >= 200*time.Millisecond {
 				flush()
 			}
@@ -1188,15 +1286,14 @@ func shouldRetryWithPTY(output string) bool {
 
 // runCommandWithPTY 为子进程分配 PTY，适配需要交互式终端的工具（如 autorecon）。
 // 若 cb != nil，将持续回调增量输出（用于 SSE）。
-func runCommandWithPTY(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback) (string, error) {
+func runCommandWithPTY(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback, maxBytes int) (string, error) {
 	if runtime.GOOS == "windows" {
 		// PTY 方案为类 Unix；Windows 走原逻辑
 		if cb != nil {
-			return streamCommandOutput(ctx, cmd, cb, 0)
+			return streamCommandOutput(ctx, cmd, cb, 0, maxBytes)
 		}
 		_ = prepareShellCmdSession(cmd)
-		out, err := cmd.CombinedOutput()
-		return string(out), err
+		return combinedOutputCancellableWithLimit(ctx, cmd, maxBytes)
 	}
 
 	_ = prepareShellCmdSession(cmd)
@@ -1223,7 +1320,7 @@ func runCommandWithPTY(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback
 	}()
 	defer close(done)
 
-	var outBuilder strings.Builder
+	outBuilder := newBoundedOutputCollector(maxBytes)
 	var deltaBuilder strings.Builder
 	lastFlush := time.Now()
 	flush := func() {
@@ -1245,8 +1342,8 @@ func runCommandWithPTY(ctx context.Context, cmd *exec.Cmd, cb ToolOutputCallback
 			// 统一换行为 \n，避免前端错位
 			chunk = strings.ReplaceAll(chunk, "\r\n", "\n")
 			chunk = strings.ReplaceAll(chunk, "\r", "\n")
-			outBuilder.WriteString(chunk)
-			deltaBuilder.WriteString(chunk)
+			keptChunk := outBuilder.WriteStringLimited(chunk)
+			deltaBuilder.WriteString(keptChunk)
 			if deltaBuilder.Len() >= 2048 || time.Since(lastFlush) >= 200*time.Millisecond {
 				flush()
 			}
