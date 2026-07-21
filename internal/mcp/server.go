@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cyberstrike-ai/internal/authctx"
+	"cyberstrike-ai/internal/mcp/builtin"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -52,6 +53,9 @@ type Server struct {
 	httpToolTimeoutMinutes *int
 	httpToolTimeoutMu      sync.RWMutex
 	toolAuthorizer         func(context.Context, string, map[string]interface{}) error
+	executionService       *ExecutionService
+	toolWaitTimeout        time.Duration
+	toolResultMaxBytes     int
 }
 
 // SetToolAuthorizer installs the common policy decision point for every
@@ -100,13 +104,28 @@ func NewServerWithStorage(logger *zap.Logger, storage MonitorStorage) *Server {
 		sseClients:            make(map[string]*sseClient),
 		runningCancels:        make(map[string]context.CancelFunc),
 		abortUserNotes:        make(map[string]string),
+		toolWaitTimeout:       60 * time.Second,
+		toolResultMaxBytes:    DefaultToolResultMaxBytes,
 	}
+	s.executionService = NewExecutionService(storage, logger)
 
 	// 初始化默认提示词和资源
 	s.initDefaultPrompts()
 	s.initDefaultResources()
 
 	return s
+}
+
+func (s *Server) ConfigureToolResultMaxBytes(maxBytes int) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	s.toolResultMaxBytes = maxBytes
+	s.mu.Unlock()
+	if s.executionService != nil {
+		s.executionService.ConfigureToolResultMaxBytes(maxBytes)
+	}
 }
 
 // ConfigureHTTPToolCallTimeoutFromAgentMinutes 将 agent.tool_timeout_minutes 同步到经 HTTP POST /api/mcp 触发的 tools/call。
@@ -123,6 +142,19 @@ func (s *Server) ConfigureHTTPToolCallTimeoutFromAgentMinutes(minutes int) {
 	s.httpToolTimeoutMu.Lock()
 	defer s.httpToolTimeoutMu.Unlock()
 	s.httpToolTimeoutMinutes = &v
+}
+
+func (s *Server) ConfigureToolWaitTimeoutSeconds(seconds int) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if seconds <= 0 {
+		s.toolWaitTimeout = 0
+		return
+	}
+	s.toolWaitTimeout = time.Duration(seconds) * time.Second
 }
 
 func (s *Server) effectiveHTTPToolCallDeadline(parent context.Context) (context.Context, context.CancelFunc) {
@@ -709,6 +741,11 @@ func (s *Server) updateStats(toolName string, failed bool) {
 
 // GetExecution 获取执行记录（先从内存查找，再从数据库查找）
 func (s *Server) GetExecution(id string) (*ToolExecution, bool) {
+	if s.executionService != nil {
+		if snap, err := s.executionService.Get(id); err == nil && snap != nil && snap.Execution != nil {
+			return snap.Execution, true
+		}
+	}
 	s.mu.RLock()
 	exec, exists := s.executions[id]
 	s.mu.RUnlock()
@@ -860,112 +897,90 @@ func (s *Server) CallTool(ctx context.Context, toolName string, args map[string]
 		return nil, "", fmt.Errorf("工具 %s 未找到", toolName)
 	}
 
-	// 创建执行记录
-	executionID := uuid.New().String()
-	execution := &ToolExecution{
-		ID:        executionID,
-		ToolName:  toolName,
-		Arguments: args,
-		Status:    "running",
-		StartTime: time.Now(),
+	if s.executionService == nil {
+		s.executionService = NewExecutionService(s.storage, s.logger)
+		s.executionService.ConfigureToolResultMaxBytes(s.toolResultMaxBytes)
 	}
+	var ownerUserID string
 	if principal, ok := authctx.PrincipalFromContext(ctx); ok {
-		execution.OwnerUserID = principal.UserID
+		ownerUserID = principal.UserID
 	}
-	execution.ConversationID = MCPConversationIDFromContext(ctx)
-
-	s.mu.Lock()
-	s.executions[executionID] = execution
-	// 如果内存中的执行记录超过限制，清理最旧的记录
-	s.cleanupOldExecutions()
-	s.mu.Unlock()
-
-	if s.storage != nil {
-		if err := s.storage.SaveToolExecution(execution); err != nil {
-			s.logger.Warn("保存执行记录到数据库失败", zap.Error(err))
-		}
-	}
-
-	execCtx, runCancel := context.WithCancel(ctx)
-	s.registerRunningCancel(executionID, runCancel)
-	notifyToolRunBegin(ctx, executionID)
-	defer func() {
-		notifyToolRunEnd(ctx, executionID)
-		runCancel()
-		s.unregisterRunningCancel(executionID)
-	}()
-
-	result, err := handler(execCtx, args)
-	cancelledWithUserNote := s.applyAbortUserNoteToCancelledToolResult(executionID, &result, &err)
-
-	s.mu.Lock()
-	now := time.Now()
-	execution.EndTime = &now
-	execution.Duration = now.Sub(execution.StartTime)
-	var failed bool
-	var finalResult *ToolResult
-
+	handle, err := s.executionService.Submit(ctx, ExecutionRequest{
+		ToolName:       toolName,
+		Arguments:      args,
+		ConversationID: MCPConversationIDFromContext(ctx),
+		OwnerUserID:    ownerUserID,
+		Run: func(runCtx context.Context) (*ToolResult, error) {
+			return handler(runCtx, args)
+		},
+		OnDone: func(exec *ToolExecution) {
+			failed := exec != nil && exec.Status != ToolExecutionStatusCompleted
+			s.updateStats(toolName, failed)
+		},
+	})
 	if err != nil {
-		st, msg := executionStatusAndMessage(err)
-		execution.Status = st
-		execution.Error = msg
-		failed = true
-	} else if result != nil && result.IsError {
-		if cancelledWithUserNote {
-			execution.Status = "cancelled"
-			execution.Error = ""
-			execution.Result = result
-			failed = true
-			finalResult = result
-		} else {
-			execution.Status = "failed"
-			if len(result.Content) > 0 {
-				execution.Error = result.Content[0].Text
-			} else {
-				execution.Error = "工具执行返回错误结果"
-			}
-			execution.Result = result
-			failed = true
-			finalResult = result
-		}
-	} else {
-		execution.Status = "completed"
-		if result == nil {
-			result = &ToolResult{
-				Content: []Content{
-					{Type: "text", Text: "工具执行完成，但未返回结果"},
-				},
-			}
-		}
-		execution.Result = result
-		finalResult = result
-		failed = false
+		return nil, "", err
 	}
 
-	if finalResult == nil {
-		finalResult = execution.Result
+	s.mu.RLock()
+	waitTimeout := s.toolWaitTimeout
+	s.mu.RUnlock()
+	if isExecutionControlTool(toolName) {
+		waitTimeout = 0
 	}
-	s.mu.Unlock()
-
-	if s.storage != nil {
-		if err := s.storage.SaveToolExecution(execution); err != nil {
-			s.logger.Warn("保存执行记录到数据库失败", zap.Error(err))
-		}
+	snapshot, waitErr := s.executionService.Wait(ctx, handle.ID, waitTimeout)
+	if errors.Is(waitErr, ErrExecutionWaitTimeout) {
+		return internalMCPWaitTimeoutResult(snapshot, waitTimeout), handle.ID, nil
 	}
-
-	s.updateStats(toolName, failed)
-
-	if s.storage != nil {
-		s.mu.Lock()
-		delete(s.executions, executionID)
-		s.mu.Unlock()
+	if waitErr != nil {
+		return nil, handle.ID, waitErr
 	}
-
-	if err != nil {
-		return nil, executionID, err
+	if snapshot == nil || snapshot.Execution == nil {
+		return &ToolResult{Content: []Content{{Type: "text", Text: "工具执行完成，但未返回执行快照"}}, IsError: true}, handle.ID, nil
 	}
+	if snapshot.Execution.Result != nil {
+		return snapshot.Execution.Result, handle.ID, nil
+	}
+	if snapshot.Execution.Error != "" {
+		return nil, handle.ID, errors.New(snapshot.Execution.Error)
+	}
+	return &ToolResult{Content: []Content{{Type: "text", Text: "工具执行完成，但未返回结果"}}, IsError: false}, handle.ID, nil
+}
 
-	return finalResult, executionID, nil
+func internalMCPWaitTimeoutResult(snapshot *ExecutionSnapshot, waitTimeout time.Duration) *ToolResult {
+	execID := ""
+	status := ToolExecutionStatusRunning
+	toolName := ""
+	elapsed := time.Duration(0)
+	if snapshot != nil && snapshot.Execution != nil {
+		execID = snapshot.Execution.ID
+		status = snapshot.Execution.Status
+		toolName = snapshot.Execution.ToolName
+		elapsed = time.Since(snapshot.Execution.StartTime).Round(time.Second)
+	}
+	waitText := "unbounded"
+	if waitTimeout > 0 {
+		waitText = waitTimeout.Round(time.Second).String()
+	}
+	msg := fmt.Sprintf(`工具已提交到后台执行，但本次等待已到达上限。
+
+execution_id: %s
+tool: %s
+status: %s
+wait_timeout: %s
+elapsed: %s
+
+你可以继续推理、改用其他工具，或调用 wait_tool_execution 继续等待该 execution_id；也可以调用 cancel_tool_execution 取消。`, execID, toolName, status, waitText, elapsed)
+	return &ToolResult{Content: []Content{{Type: "text", Text: msg}}, IsError: true}
+}
+
+func isExecutionControlTool(toolName string) bool {
+	switch strings.TrimSpace(toolName) {
+	case builtin.ToolGetToolExecution, builtin.ToolWaitToolExecution, builtin.ToolCancelToolExecution:
+		return true
+	default:
+		return false
+	}
 }
 
 // BeginToolExecution 创建 running 状态的执行记录，供 Eino 等非 CallTool 路径在工具开始时落库。
@@ -1020,6 +1035,7 @@ func (s *Server) FinishToolExecution(ctx context.Context, executionID, toolName 
 	var finalResult *ToolResult
 
 	s.mu.Lock()
+	maxBytes := s.toolResultMaxBytes
 	exec, inMem := s.executions[id]
 	if !inMem || exec == nil {
 		exec = &ToolExecution{
@@ -1053,6 +1069,7 @@ func (s *Server) FinishToolExecution(ctx context.Context, executionID, toolName 
 		exec.Error = msg
 		if strings.TrimSpace(resultText) != "" {
 			finalResult = &ToolResult{Content: []Content{{Type: "text", Text: resultText}}}
+			finalResult = NormalizeToolResultForStorage(finalResult, maxBytes)
 			exec.Result = finalResult
 		}
 	} else {
@@ -1062,6 +1079,7 @@ func (s *Server) FinishToolExecution(ctx context.Context, executionID, toolName 
 			text = "（无输出）"
 		}
 		finalResult = &ToolResult{Content: []Content{{Type: "text", Text: text}}}
+		finalResult = NormalizeToolResultForStorage(finalResult, maxBytes)
 		exec.Result = finalResult
 	}
 	s.mu.Unlock()
@@ -1098,6 +1116,7 @@ func (s *Server) UpdateToolExecutionResult(executionID string, result *ToolResul
 		return nil
 	}
 	s.mu.Lock()
+	result = NormalizeToolResultForStorage(result, s.toolResultMaxBytes)
 	if exec, ok := s.executions[executionID]; ok && exec != nil {
 		exec.Result = result
 	}
@@ -1205,6 +1224,9 @@ func (s *Server) applyAbortUserNoteToCancelledToolResult(executionID string, res
 
 // CancelToolExecutionWithNote 取消内部工具；note 非空时与工具已返回文本合并后交给上层模型。
 func (s *Server) CancelToolExecutionWithNote(id string, note string) bool {
+	if s.executionService != nil && s.executionService.Cancel(id, note) {
+		return true
+	}
 	s.runningCancelsMu.Lock()
 	cancel, ok := s.runningCancels[id]
 	if !ok || cancel == nil {
@@ -1232,12 +1254,17 @@ func (s *Server) ActiveRunningExecutionIDs() map[string]struct{} {
 	if s == nil {
 		return nil
 	}
+	out := make(map[string]struct{})
+	if s.executionService != nil {
+		for id := range s.executionService.ActiveRunningExecutionIDs() {
+			out[id] = struct{}{}
+		}
+	}
 	s.runningCancelsMu.Lock()
 	defer s.runningCancelsMu.Unlock()
-	if len(s.runningCancels) == 0 {
+	if len(s.runningCancels) == 0 && len(out) == 0 {
 		return nil
 	}
-	out := make(map[string]struct{}, len(s.runningCancels))
 	for id := range s.runningCancels {
 		out[id] = struct{}{}
 	}

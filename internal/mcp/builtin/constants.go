@@ -31,6 +31,11 @@ const (
 	// 视觉分析（本地图片 → VL 模型 → 文本摘要）
 	ToolAnalyzeImage = "analyze_image"
 
+	// 长耗时工具执行控制（后台 execution 查询/等待/取消）
+	ToolGetToolExecution    = "get_tool_execution"
+	ToolWaitToolExecution   = "wait_tool_execution"
+	ToolCancelToolExecution = "cancel_tool_execution"
+
 	// WebShell 助手工具（AI 在 WebShell 管理 - AI 助手 中使用）
 	ToolWebshellExec      = "webshell_exec"
 	ToolWebshellFileList  = "webshell_file_list"
@@ -91,6 +96,9 @@ func IsBuiltinTool(toolName string) bool {
 		ToolListKnowledgeRiskTypes,
 		ToolSearchKnowledgeBase,
 		ToolAnalyzeImage,
+		ToolGetToolExecution,
+		ToolWaitToolExecution,
+		ToolCancelToolExecution,
 		ToolWebshellExec,
 		ToolWebshellFileList,
 		ToolWebshellFileRead,
@@ -149,6 +157,9 @@ func GetAllBuiltinTools() []string {
 		ToolListKnowledgeRiskTypes,
 		ToolSearchKnowledgeBase,
 		ToolAnalyzeImage,
+		ToolGetToolExecution,
+		ToolWaitToolExecution,
+		ToolCancelToolExecution,
 		ToolWebshellExec,
 		ToolWebshellFileList,
 		ToolWebshellFileRead,
